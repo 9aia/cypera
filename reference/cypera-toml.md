@@ -107,6 +107,20 @@ appear; `Option<T>` and a literal `serde(default` attribute mark a
 field optional and unwrap the inner type; notes escape `|`, `<`,
 `>`.
 
+## `[check]` — `cypera check` exemptions
+
+| key | type | meaning |
+| --- | --- | --- |
+| `skip` | string list | `cypera check` rule names reported `SKIP` (exempt) instead of their computed status — for repos where a rule doesn't apply by design (content-only ledger mounts, theme packages, the website repo). Rules: `readme`, `agents-md`, `no-changelog`, `no-version-in-prose`, `docs-site`, `docs-check-script`, `generated-fresh`. Unknown names warn on stderr and are ignored — a typo never fails the run. |
+
+```toml
+[check]
+skip = ["docs-site", "docs-check-script"]
+```
+
+Exempted rules still run — the report keeps their evidence, only
+the status downgrades to `SKIP`, which never fails the check.
+
 ## Freshness — what `cypera check` verifies
 
 `cypera check --repo <path>` regenerates every declared output

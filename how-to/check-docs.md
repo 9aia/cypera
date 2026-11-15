@@ -20,12 +20,19 @@ Exit status is non-zero when any rule fails; `SKIP` never fails.
 | `readme` | `README.md` exists, is under 200 lines, has what/why/quickstart-shaped content, and contains an install or run command. |
 | `agents-md` | `AGENTS.md` exists with Layout-, Commands-, and Boundary-ish sections. |
 | `no-changelog` | No `CHANGELOG*` at the repo root — releases are tarsi's job. |
-| `no-version-in-prose` | No `v?\d+\.\d+\.\d+` in prose (`.md`/`.txt`, plus `//` comment lines in `.rs`); manifests and lockfiles are exempt, fenced code blocks are skipped. |
+| `no-version-in-prose` | No `v?\d+\.\d+\.\d+` in prose (`.md`/`.txt`); manifests and lockfiles are exempt, as are fenced code blocks, inline code spans, and raw HTML `<script>`/`<style>` blocks. |
 | `docs-site` | A `docs/` worktree (or equivalent) with the four Diátaxis quadrants: `tutorials/`, `how-to/`, `reference/`, `explanation/`. |
 | `docs-check-script` | `docs/package.json` has a `docs:check` script. |
 | `generated-fresh` | Every output declared in `cypera.toml` regenerates byte-identically — cypera rebuilds each page in memory and diffs (no writes). Without `cypera.toml` the rule skips. |
 
 Every finding carries `file:line` evidence where applicable.
+
+A repo that legitimately can't satisfy a rule — a content-only
+ledger mount, a theme package, the website repo itself — exempts
+it with `[check] skip = ["docs-site", ...]` in `cypera.toml`
+(see [the schema](/reference/cypera-toml)). Exempt rules still run
+and report `SKIP`, which never fails the check; unknown names warn
+on stderr.
 
 ## Wire it into a repo
 

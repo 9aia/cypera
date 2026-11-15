@@ -260,9 +260,10 @@ fn changelog_rule(root: &Path) -> Rule {
 
 // ---------- rule: no version numbers in prose ----------
 
-/// Scan prose sources (`.md`/`.rs`/`.txt`) for `v?\d+\.\d+\.\d+`
+/// Scan prose sources (`.md`/`.txt`) for `v?\d+\.\d+\.\d+`
 /// outside fenced code blocks and skipped dirs — versions belong
-/// in manifests/lockfiles, not prose.
+/// in manifests/lockfiles, not prose. Source files are out of
+/// scope: semver literals in code and doc comments are legitimate.
 fn version_prose_rule(root: &Path) -> Result<Rule> {
     const NAME: &str = "no-version-in-prose";
     let mut hits = Vec::new();
@@ -272,7 +273,14 @@ fn version_prose_rule(root: &Path) -> Result<Rule> {
         let Ok(text) = std::fs::read_to_string(path) else {
             return;
         };
-        let is_rs = path.extension().and_then(|e| e.to_str()) == Some("rs");
+        // Changelogs are version-native by definition.
+        let fname = path
+            .file_name()
+            .map(|f| f.to_string_lossy().to_lowercase())
+            .unwrap_or_default();
+        if fname.starts_with("changelog") {
+            return;
+        }
         let mut in_fence = false;
         for (i, line) in text.lines().enumerate() {
             let t = line.trim_start();
@@ -283,12 +291,9 @@ fn version_prose_rule(root: &Path) -> Result<Rule> {
             if in_fence {
                 continue;
             }
-            // `.rs` "prose" is doc comments only — version constants
-            // in code are legitimate.
-            if is_rs && !t.starts_with("//") {
-                continue;
-            }
-            for m in find_versions(line) {
+            // Versions inside URLs are links, not prose claims.
+            let masked = mask_urls(line);
+            for m in find_versions(&masked) {
                 if hits.len() >= 20 {
                     return;
                 }
@@ -318,7 +323,7 @@ const SKIP_DIRS: &[&str] = &[
     ".vitepress",
 ];
 
-/// Recursive prose-file walk — `.md`/`.rs`/`.txt`, skipping
+/// Recursive prose-file walk — `.md`/`.txt`, skipping
 /// [`SKIP_DIRS`] and dot-dirs other than `docs`-style trees.
 fn walk_prose(root: &Path, f: &mut impl FnMut(&Path, String)) -> Result<()> {
     let mut stack = vec![root.to_path_buf()];
@@ -332,7 +337,7 @@ fn walk_prose(root: &Path, f: &mut impl FnMut(&Path, String)) -> Result<()> {
                 }
                 stack.push(p);
             } else if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
-                if matches!(ext, "md" | "rs" | "txt") {
+                if matches!(ext, "md" | "txt") {
                     let rel = p
                         .strip_prefix(root)
                         .unwrap_or(&p)
@@ -344,6 +349,44 @@ fn walk_prose(root: &Path, f: &mut impl FnMut(&Path, String)) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Blank out `http(s)://…` spans so versions inside URLs don't
+/// count as prose claims.
+fn mask_urls(line: &str) -> String {
+    let chars: Vec<(usize, char)> = line.char_indices().collect();
+    let bytes = line.as_bytes();
+    let mut masked = vec![false; line.len()];
+    let mut i = 0;
+    while i + 7 < bytes.len() {
+        let is_url = (bytes[i..].starts_with(b"http://") || bytes[i..].starts_with(b"https://"))
+            && (i == 0 || !(bytes[i - 1].is_ascii_alphanumeric() || bytes[i - 1] == b'/'));
+        if !is_url {
+            i += 1;
+            continue;
+        }
+        let mut j = i;
+        while j < bytes.len()
+            && !bytes[j].is_ascii_whitespace()
+            && !matches!(bytes[j], b')' | b']' | b'"' | b'\'')
+        {
+            j += 1;
+        }
+        for k in i..j {
+            masked[k] = true;
+        }
+        i = j;
+    }
+    let mut out = String::with_capacity(line.len());
+    for (idx, (pos, ch)) in chars.iter().enumerate() {
+        let _ = idx;
+        if masked[*pos] {
+            out.push(' ');
+        } else {
+            out.push(*ch);
+        }
+    }
+    out
 }
 
 /// Find `v?\d+\.\d+\.\d+` matches in a line — not embedded in a

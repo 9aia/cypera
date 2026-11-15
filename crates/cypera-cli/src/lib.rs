@@ -658,7 +658,21 @@ fn cli_help_page(root: &Path, spec: &CliConfig) -> Result<String> {
         if !status.success() {
             bail!("cargo build -p {pkg} failed");
         }
-        root.join("target/debug").join(&spec.bin)
+        // Honor CARGO_TARGET_DIR (deploy pipelines isolate builds —
+        // e.g. docs/scripts/deploy-docs.sh's target/gate); a
+        // relative value resolves against the repo root like cargo.
+        let target = match std::env::var_os("CARGO_TARGET_DIR") {
+            Some(dir) => {
+                let p = PathBuf::from(dir);
+                if p.is_absolute() {
+                    p
+                } else {
+                    root.join(p)
+                }
+            }
+            None => root.join("target"),
+        };
+        target.join("debug").join(&spec.bin)
     } else {
         PathBuf::from(&spec.bin)
     };

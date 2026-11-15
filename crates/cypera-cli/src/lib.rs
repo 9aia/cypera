@@ -590,15 +590,21 @@ fn gen_cli(repo: &Path, config: Option<&Path>, opts: CliOpts<'_>) -> Result<i32>
     let title = title
         .map(str::to_string)
         .or_else(|| file_cfg.as_ref().and_then(|c| c.title.clone()));
-    let emit_to = out.map(Path::to_path_buf).or_else(|| {
-        file_cfg
-            .as_ref()
-            .and_then(|c| c.out.clone().map(PathBuf::from))
-    });
-
     let root = repo
         .canonicalize()
         .with_context(|| format!("--repo {} does not exist", repo.display()))?;
+    // Config-declared `out` resolves repo-root-relative (the
+    // splices/crate_api convention); an explicit `--out` flag stays
+    // cwd-relative.
+    let emit_to = match out {
+        Some(p) => Some(p.to_path_buf()),
+        None => file_cfg.as_ref().and_then(|c| {
+            c.out
+                .as_ref()
+                .map(|rel| resolve_path(&root, &config_dir(&discovered), rel))
+        }),
+    };
+
     let mut spec = spec;
     spec.title = title;
     let page = cli_help_page(&root, &spec)?;
@@ -794,9 +800,12 @@ fn gen_config(
         .with_context(|| format!("--repo {} does not exist", repo.display()))?;
     let base = config_dir(&discovered);
     let page = config_doc_page(&root, &base, doc, only, title)?;
-    let emit_to = out
-        .map(Path::to_path_buf)
-        .or_else(|| doc.out.as_ref().map(PathBuf::from));
+    // Same resolution rule as `[cli].out` — config-declared paths
+    // are repo-root-relative; `--out` stays cwd-relative.
+    let emit_to = match out {
+        Some(p) => Some(p.to_path_buf()),
+        None => doc.out.as_ref().map(|rel| resolve_path(&root, &base, rel)),
+    };
     emit_to_path(page, emit_to.as_deref())?;
     Ok(0)
 }

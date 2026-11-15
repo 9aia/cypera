@@ -8,8 +8,8 @@ use anyhow::{Context, Result};
 use serde_json::{json, Value};
 
 use crate::{
-    build_crate_map, cli_help_page, config_dir, config_doc_page, discover_config, resolve_cli_spec,
-    resolve_path, RepoConfig,
+    build_crate_map, cli_help_page, config_dir, config_doc_page, discover_config, repo_name,
+    resolve_cli_spec, resolve_path, RepoConfig,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -130,10 +130,16 @@ fn readme_rule(root: &Path) -> Rule {
     if lines.len() >= 200 {
         evidence.push("README.md: over 200 lines — quickstart, not docs".into());
     }
-    let repo_name = root
-        .file_name()
-        .map(|n| n.to_string_lossy().to_lowercase())
-        .unwrap_or_default();
+    // Candidate command names — the remote-aware repo name plus the
+    // dir basename (gate worktrees live under hashed dirs where only
+    // the remote still says `myco`).
+    let mut names = vec![repo_name(root)];
+    if let Some(d) = root.file_name().map(|n| n.to_string_lossy().to_lowercase()) {
+        if !names.iter().any(|n| n == &d) {
+            names.push(d);
+        }
+    }
+    names.retain(|n| !n.is_empty());
     let mut in_fence = false;
     let mut found: Option<usize> = None;
     for (i, line) in lines.iter().enumerate() {
@@ -170,7 +176,7 @@ fn readme_rule(root: &Path) -> Rule {
                 | "install"
                 | "curl"
         );
-        if known || (!repo_name.is_empty() && first == repo_name) {
+        if known || names.iter().any(|n| first.eq_ignore_ascii_case(n)) {
             found = Some(i + 1);
             break;
         }

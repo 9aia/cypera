@@ -356,6 +356,34 @@ fn resolve_path(repo: &Path, base: &Path, rel: &str) -> PathBuf {
     base.join(p)
 }
 
+/// Repo display name — the `origin` remote's repo basename when it
+/// resolves (detached/gate worktrees live under hashed dirs like
+/// `worktrees-9aia-myco-<sha>` where the dir name is not the repo
+/// name), else the directory basename.
+pub(crate) fn repo_name(root: &Path) -> String {
+    if let Ok(out) = std::process::Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["remote", "get-url", "origin"])
+        .output()
+    {
+        if out.status.success() {
+            let url = String::from_utf8_lossy(&out.stdout);
+            if let Some(seg) = url.trim().rsplit('/').next() {
+                let seg = seg.strip_suffix(".git").unwrap_or(seg);
+                // scp-like `host:repo` (no slash) segments carry a
+                // ':' — not a repo name.
+                if !seg.is_empty() && !seg.contains(':') {
+                    return seg.to_string();
+                }
+            }
+        }
+    }
+    root.file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "repo".to_string())
+}
+
 // ---------- crate-map ----------
 
 /// Parse `crate=layer` overrides into `(name, layer)` pairs.
@@ -432,10 +460,7 @@ fn build_crate_map(
         expand_members(&root, ws.members())?
     };
 
-    let repo_name = root
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "repo".to_string());
+    let repo_name = repo_name(&root);
 
     let mut members = Vec::new();
     let mut entries = Vec::new();

@@ -37,6 +37,6 @@ pub use crate_map::{
 pub use error::CyperaError;
 pub use manifest::{CrateManifest, WorkspaceManifest};
 pub use repo_config::{
-    ApiConfig, CliConfig, ConfigDocConfig, ConfigSection, ConfigStructRef, CrateApiConfig,
-    CrateMapConfig, CrateMapSplice, RepoConfig,
+    ApiConfig, CheckConfig, CliConfig, ConfigDocConfig, ConfigSection, ConfigStructRef,
+    CrateApiConfig, CrateMapConfig, CrateMapSplice, RepoConfig, CHECK_RULE_NAMES,
 };

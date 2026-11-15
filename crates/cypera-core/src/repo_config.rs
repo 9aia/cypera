@@ -53,6 +53,9 @@
 //! out = "docs/public/api"      #   target/doc copy destination
 //! prefix = "myco"              #   index filter + title base
 //! target_dir = "target/docs-api"  # CARGO_TARGET_DIR when unset
+//!
+//! [check]                      # cypera check — rule exemptions
+//! skip = ["docs-site", "docs-check-script"]
 //! ```
 //!
 //! Pure model + TOML decoding — the IO layer (discovery, file
@@ -81,6 +84,38 @@ pub struct RepoConfig {
     /// `gen-api*.py` defaults.
     #[serde(default)]
     pub api: ApiConfig,
+    /// `[check]` — `cypera check` rule exemptions.
+    #[serde(default)]
+    pub check: CheckConfig,
+}
+
+/// The `cypera check` rule names — the vocabulary `[check] skip`
+/// accepts. Keep in sync with the rules constructed in
+/// `cypera-cli/src/check.rs`.
+pub const CHECK_RULE_NAMES: &[&str] = &[
+    "agents-md",
+    "docs-check-script",
+    "docs-site",
+    "generated-fresh",
+    "no-changelog",
+    "no-version-in-prose",
+    "readme",
+];
+
+/// `[check]` — exemptions for `cypera check`. Rules named in
+/// `skip` are still evaluated but reported `SKIP` (exempt) instead
+/// of their computed status — for repos where a contract rule
+/// doesn't apply by design: content-only ledger mounts, theme
+/// packages without the docs-worktree convention, the website
+/// repo itself.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct CheckConfig {
+    /// Rule names to exempt — must come from
+    /// [`CHECK_RULE_NAMES`]. Unknown names are ignored with a
+    /// warning at check time (a typo must not fail the whole
+    /// run), so this list is deliberately not validated at parse.
+    #[serde(default)]
+    pub skip: Vec<String>,
 }
 
 /// `[crate_map]` — absorbs the per-repo `LAYER`/`ORDER`/`SITE`
@@ -418,6 +453,25 @@ text = "- typos fail"
         assert_eq!(c.structs[0].name, "Config");
         assert_eq!(c.sections[0].title.as_deref(), Some("Constraints"));
         assert_eq!(c.sections[0].level, 2);
+    }
+
+    #[test]
+    fn parses_check_section() {
+        let text = r#"
+[check]
+skip = ["docs-site", "docs-check-script"]
+"#;
+        let cfg = RepoConfig::parse("cypera.toml", text).unwrap();
+        assert_eq!(cfg.check.skip, ["docs-site", "docs-check-script"]);
+        // Unknown names parse fine — `cypera check` warns and
+        // ignores them rather than failing the whole config load.
+        let text = r#"
+[check]
+skip = ["not-a-rule"]
+"#;
+        let cfg = RepoConfig::parse("cypera.toml", text).unwrap();
+        assert_eq!(cfg.check.skip, ["not-a-rule"]);
+        assert!(!CHECK_RULE_NAMES.contains(&"not-a-rule"));
     }
 
     #[test]

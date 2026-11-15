@@ -110,11 +110,16 @@ cypera check --repo ../myco --json    # machine-readable
 
 Rules: README shape (what/why/quickstart, <200 lines, install/run
 command), `AGENTS.md` sections (Layout/Commands/Boundary), no
-`CHANGELOG.md`, no version numbers in prose (manifests/lockfiles
-and code lines exempt — doc comments count), Diátaxis `docs/`
+`CHANGELOG.md`, no version numbers in prose (manifests/lockfiles,
+fenced code blocks, inline code spans, and `<script>`/`<style>`
+HTML blocks exempt — doc comments count), Diátaxis `docs/`
 layout, `docs:check` script in `docs/package.json`, and
 generated-file freshness — cypera regenerates every output
 declared in `cypera.toml` in-memory and diffs (no writes).
+
+Repos where a rule doesn't apply by design exempt it via
+`[check] skip = ["docs-site", ...]` in `cypera.toml` — the rule
+still runs but reports `SKIP` (unknown names warn, never fail).
 
 ## Layout
 

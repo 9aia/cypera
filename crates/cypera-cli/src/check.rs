@@ -75,6 +75,24 @@ pub fn run_check(repo: &Path, config: Option<&Path>, json_out: bool) -> Result<i
     // Deterministic order regardless of construction.
     rules.sort_by_key(|r| r.name);
 
+    // `[check] skip` exemptions — rules still run (evidence is
+    // honest) but report SKIP. Unknown names warn and are ignored:
+    // a typo must not break `cypera check` for the whole repo.
+    if let Some(rc) = cfg {
+        for name in &rc.check.skip {
+            if !cypera_core::CHECK_RULE_NAMES.contains(&name.as_str()) {
+                eprintln!("cypera check: warning: unknown [check] skip rule `{name}`");
+            }
+        }
+        for r in &mut rules {
+            if rc.check.skip.iter().any(|s| s == r.name) {
+                r.status = Status::Skip;
+                r.evidence
+                    .push("exempt via cypera.toml [check] skip".into());
+            }
+        }
+    }
+
     let failed = rules.iter().any(|r| r.status == Status::Fail);
     if json_out {
         let report = json!({
@@ -173,6 +191,7 @@ fn readme_rule(root: &Path) -> Rule {
                 | "sh"
                 | "sudo"
                 | "tamias"
+                | "myco"
                 | "install"
                 | "curl"
         );
@@ -267,7 +286,8 @@ fn changelog_rule(root: &Path) -> Rule {
 // ---------- rule: no version numbers in prose ----------
 
 /// Scan prose sources (`.md`/`.txt`) for `v?\d+\.\d+\.\d+`
-/// outside fenced code blocks and skipped dirs — versions belong
+/// outside fenced code blocks, inline code spans, raw HTML
+/// `<script>`/`<style>` blocks, and skipped dirs — versions belong
 /// in manifests/lockfiles, not prose. Source files are out of
 /// scope: semver literals in code and doc comments are legitimate.
 fn version_prose_rule(root: &Path) -> Result<Rule> {
@@ -290,6 +310,10 @@ fn version_prose_rule(root: &Path) -> Result<Rule> {
         if fname.starts_with("changelog") {
             return;
         }
+        // `<script>`/`<style>` blocks are code, not prose — VitePress
+        // markdown allows raw HTML/JS (SVG path floats look like
+        // semver to the scanner).
+        let text = mask_html_blocks(&text);
         let mut in_fence = false;
         for (i, line) in text.lines().enumerate() {
             let t = line.trim_start();
@@ -300,8 +324,8 @@ fn version_prose_rule(root: &Path) -> Result<Rule> {
             if in_fence {
                 continue;
             }
-            // Versions inside URLs are links, not prose claims.
-            let masked = mask_urls(line);
+            // Inline code spans and URLs are not prose claims.
+            let masked = mask_urls(&mask_inline_code(line));
             for m in find_versions(&masked) {
                 if hits.len() >= 20 {
                     return;
@@ -395,6 +419,119 @@ fn mask_urls(line: &str) -> String {
     }
     let mut out = String::with_capacity(line.len());
     for (pos, ch) in chars {
+        out.push(if masked[pos] { ' ' } else { ch });
+    }
+    out
+}
+
+/// Blank out the *contents* of raw HTML `<script>`/`<style>`
+/// blocks (the tags themselves stay). Markdown allows inline HTML,
+/// and VitePress pages carry JS/CSS whose numeric literals are not
+/// prose claims. Newlines are preserved so line numbers hold; an
+/// unclosed block masks to EOF.
+fn mask_html_blocks(text: &str) -> String {
+    let lower = text.to_lowercase();
+    let bytes = text.as_bytes();
+    let mut masked = vec![false; text.len()];
+    let mut pos = 0usize;
+    while pos < bytes.len() {
+        // Next `<script`/`<style` open tag at or after `pos`.
+        let mut found: Option<(usize, &'static str)> = None;
+        for (tag, close) in [("<script", "</script"), ("<style", "</style")] {
+            if let Some(off) = lower[pos..].find(tag) {
+                let start = pos + off;
+                // Tag-name boundary: next char must end the name.
+                let next = bytes.get(start + tag.len()).copied();
+                if next.is_some_and(|c| c.is_ascii_whitespace() || c == b'>' || c == b'/')
+                    && found.is_none_or(|(s, _)| start < s)
+                {
+                    found = Some((start, close));
+                }
+            }
+        }
+        let Some((open, close)) = found else { break };
+        let open_end = open
+            + if lower[open..].starts_with("<script") {
+                "<script".len()
+            } else {
+                "<style".len()
+            };
+        // Find the matching close tag; mask up to (not incl.) it.
+        let close_at = lower[open_end..]
+            .find(close)
+            .map(|o| open_end + o)
+            .filter(|&c| {
+                bytes
+                    .get(c + close.len())
+                    .is_none_or(|&n| n == b'>' || n.is_ascii_whitespace())
+            });
+        let mask_end = close_at.unwrap_or(text.len());
+        for (i, m) in masked.iter_mut().enumerate().take(mask_end).skip(open_end) {
+            if bytes[i] != b'\n' && bytes[i] != b'\r' {
+                *m = true;
+            }
+        }
+        // Continue scanning after the close tag (or stop at EOF).
+        pos = match close_at {
+            Some(c) => c + close.len(),
+            None => text.len(),
+        };
+    }
+    let mut out = String::with_capacity(text.len());
+    for (pos, ch) in text.char_indices() {
+        out.push(if masked[pos] { ' ' } else { ch });
+    }
+    out
+}
+
+/// Blank out inline code spans — text between matching backtick
+/// runs (same run length, per CommonMark). An unmatched run leaves
+/// the rest of the line literal. Newlines never appear here (the
+/// caller works line-by-line).
+fn mask_inline_code(line: &str) -> String {
+    let bytes = line.as_bytes();
+    let mut masked = vec![false; line.len()];
+    let mut i = 0usize;
+    while i < bytes.len() {
+        if bytes[i] != b'`' {
+            i += 1;
+            continue;
+        }
+        let run_start = i;
+        while i < bytes.len() && bytes[i] == b'`' {
+            i += 1;
+        }
+        let n = i - run_start;
+        // Find the next run of exactly `n` backticks.
+        let mut j = i;
+        let mut close_end = None;
+        while j < bytes.len() {
+            if bytes[j] == b'`' {
+                let cs = j;
+                while j < bytes.len() && bytes[j] == b'`' {
+                    j += 1;
+                }
+                if j - cs == n {
+                    close_end = Some(j);
+                    break;
+                }
+            } else {
+                j += 1;
+            }
+        }
+        match close_end {
+            Some(ce) => {
+                for m in masked.iter_mut().take(ce).skip(run_start) {
+                    *m = true;
+                }
+                i = ce;
+            }
+            // Unmatched opener — the backticks are literal text.
+            None => break,
+        }
+    }
+    let mut out = String::with_capacity(line.len());
+    for (pos, ch) in line.char_indices() {
         out.push(if masked[pos] { ' ' } else { ch });
     }
     out
@@ -666,5 +803,53 @@ fn docs_check_script_rule(root: &Path) -> Rule {
             NAME,
             vec!["docs/package.json: no `docs:check` script".into()],
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn inline_code_spans_are_masked() {
+        let line = "pin `v1.2.3` and ``a `1.4.5` b`` but release 2.0.0";
+        let masked = mask_inline_code(line);
+        assert!(find_versions(&masked).is_empty() || find_versions(&masked) == ["2.0.0"]);
+        assert_eq!(find_versions(&masked), vec!["2.0.0".to_string()]);
+    }
+
+    #[test]
+    fn unmatched_backtick_stays_literal() {
+        let line = "a ` stray 1.2.3 mention";
+        assert_eq!(find_versions(&mask_inline_code(line)), vec!["1.2.3"]);
+    }
+
+    #[test]
+    fn script_block_is_masked() {
+        let text = "# Title\n\n<script setup>\nconst d = \"M1.733.656 2.5 1.623.312\";\n</script>\n\nReleased in 3.1.4.\n";
+        let masked = mask_html_blocks(text);
+        let lines: Vec<&str> = masked.lines().collect();
+        // The JS line (idx 3) is blanked; the prose line (idx 6)
+        // still carries its version.
+        assert!(!lines[3].contains("1.733"));
+        assert!(lines[6].contains("3.1.4"));
+    }
+
+    #[test]
+    fn style_block_and_unclosed_script() {
+        let text =
+            "<style>\n.a { width: 1.2.3px }\n</style>\nprose 4.5.6\n<script>\nnever closed 7.8.9";
+        let masked = mask_html_blocks(text);
+        let lines: Vec<&str> = masked.lines().collect();
+        assert!(!lines[1].contains("1.2.3"));
+        assert!(lines[3].contains("4.5.6"));
+        assert!(!lines[5].contains("7.8.9"));
+    }
+
+    #[test]
+    fn prose_version_still_flags() {
+        let line = "Ships with 9.9.9 next week";
+        assert_eq!(find_versions(&mask_inline_code(line)), vec!["9.9.9"]);
     }
 }

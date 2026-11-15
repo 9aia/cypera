@@ -1,0 +1,12 @@
+/target
+Cargo.lock.bak
+*.rs.bk
+.DS_Store
+
+# cypera worktrees
+project/
+docs/
+
+# kuda
+.kuda/index.sqlite
+.kuda/meta.json

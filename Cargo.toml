@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/*",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/9aia/cypera"
+description = "Reusable documentation/reference-generation utilities for the 9aia org"
+homepage = "https://9aia.com/cypera"
+authors = ["9aia"]
+keywords = ["documentation", "rust", "cli", "vitepress"]
+categories = ["development-tools", "command-line-utilities"]
+readme = "README.md"
+
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+[workspace.dependencies]
+cypera = { path = "crates/cypera-cli", version = "0.1.0" }
+cypera-core = { path = "crates/cypera-core", version = "0.1.0" }
+
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+toml = "0.9"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"

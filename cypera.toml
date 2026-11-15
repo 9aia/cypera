@@ -1,0 +1,15 @@
+# cypera — shared documentation/reference-generation tool.
+# Consumed by `cypera gen crate-map|cli|config` (discovered upward
+# from --repo/cwd) and by `cypera check` for generated-file
+# freshness. See crates/cypera-core/src/repo_config.rs for the
+# schema; sibling repos carry equivalent files during cutover.
+
+[crate_map]
+out = "docs/reference/crate-map.md"
+
+[crate_map.layers]
+"cypera-xtask" = "tooling"
+
+[[crate_map.splices]]
+target = "docs/explanation/architecture.md"
+marker = "<!-- crate-map -->"

@@ -2,15 +2,50 @@ name: cypera-core
 path: crates/cypera-core/Cargo.toml
 purpose: Pure domain logic for cypera — doc-generation models and markdown renderers
 api:
+- name: CliConfig
+  kind: type
+  file: crates/cypera-core/src/repo_config.rs
+  line: 139
+  module: cypera-core
+- name: ConfigDocConfig
+  kind: type
+  file: crates/cypera-core/src/repo_config.rs
+  line: 168
+  module: cypera-core
+- name: ConfigDocSection
+  kind: type
+  file: crates/cypera-core/src/config.rs
+  line: 206
+  module: cypera-core
+- name: ConfigDocStyle
+  kind: type
+  file: crates/cypera-core/src/config.rs
+  line: 248
+  module: cypera-core
 - name: ConfigField
   kind: type
   file: crates/cypera-core/src/config.rs
   line: 14
   module: cypera-core
+- name: ConfigSection
+  kind: type
+  file: crates/cypera-core/src/repo_config.rs
+  line: 236
+  module: cypera-core
 - name: ConfigStruct
   kind: type
   file: crates/cypera-core/src/config.rs
-  line: 29
+  line: 33
+  module: cypera-core
+- name: ConfigStructRef
+  kind: type
+  file: crates/cypera-core/src/repo_config.rs
+  line: 222
+  module: cypera-core
+- name: CrateApiConfig
+  kind: type
+  file: crates/cypera-core/src/repo_config.rs
+  line: 129
   module: cypera-core
 - name: CrateEntry
   kind: type
@@ -27,25 +62,60 @@ api:
   file: crates/cypera-core/src/crate_map.rs
   line: 41
   module: cypera-core
+- name: CrateMapConfig
+  kind: type
+  file: crates/cypera-core/src/repo_config.rs
+  line: 80
+  module: cypera-core
+- name: CrateMapSplice
+  kind: type
+  file: crates/cypera-core/src/repo_config.rs
+  line: 113
+  module: cypera-core
 - name: CyperaError
   kind: type
   file: crates/cypera-core/src/error.rs
   line: 6
+  module: cypera-core
+- name: DEFAULT_LAYER_ORDER
+  kind: const
+  file: crates/cypera-core/src/crate_map.rs
+  line: 76
   module: cypera-core
 - name: EntryScan
   kind: type
   file: crates/cypera-core/src/crate_map.rs
   line: 14
   module: cypera-core
+- name: HELP
+  kind: const
+  file: crates/cypera-core/src/cli.rs
+  line: 364
+  module: cypera-core
+- name: HelpEntry
+  kind: type
+  file: crates/cypera-core/src/cli.rs
+  line: 32
+  module: cypera-core
+- name: HelpNode
+  kind: type
+  file: crates/cypera-core/src/cli.rs
+  line: 37
+  module: cypera-core
 - name: PackageSection
   kind: type
   file: crates/cypera-core/src/manifest.rs
   line: 50
   module: cypera-core
+- name: RepoConfig
+  kind: type
+  file: crates/cypera-core/src/repo_config.rs
+  line: 64
+  module: cypera-core
 - name: SRC
   kind: const
   file: crates/cypera-core/src/config.rs
-  line: 199
+  line: 362
   module: cypera-core
 - name: WorkspaceManifest
   kind: type
@@ -62,6 +132,11 @@ api:
   file: crates/cypera-core/src/manifest.rs
   line: 19
   module: cypera-core
+- name: anchor
+  kind: function
+  file: crates/cypera-core/src/cli.rs
+  line: 241
+  module: cypera-core
 - name: bare_package_has_no_members
   kind: function
   file: crates/cypera-core/src/manifest.rs
@@ -70,17 +145,17 @@ api:
 - name: cell
   kind: function
   file: crates/cypera-core/src/config.rs
-  line: 149
+  line: 155
   module: cypera-core
 - name: cell
   kind: function
   file: crates/cypera-core/src/crate_map.rs
-  line: 190
+  line: 202
   module: cypera-core
 - name: clean_decl
   kind: function
   file: crates/cypera-core/src/config.rs
-  line: 39
+  line: 43
   module: cypera-core
 - name: cli
   kind: module
@@ -91,6 +166,11 @@ api:
   kind: module
   file: crates/cypera-core/src/lib.rs
   line: 19
+  module: cypera-core
+- name: crate_api_page
+  kind: function
+  file: crates/cypera-core/src/crate_map.rs
+  line: 302
   module: cypera-core
 - name: crate_manifest_reads_name_and_description
   kind: function
@@ -105,104 +185,24 @@ api:
 - name: crate_map_from_workspace
   kind: function
   file: crates/cypera-core/src/crate_map.rs
-  line: 69
+  line: 99
+  module: cypera-core
+- name: crate_map_order_and_default_layer
+  kind: function
+  file: crates/cypera-core/src/crate_map.rs
+  line: 524
   module: cypera-core
 - name: crate_map_sorts_domain_first
   kind: function
   file: crates/cypera-core/src/crate_map.rs
-  line: 356
+  line: 431
   module: cypera-core
 - name: crate_map_table
   kind: function
   file: crates/cypera-core/src/crate_map.rs
-  line: 271
+  line: 283
   module: cypera-core
-- name: cypera-core
-  kind: module
-  file: crates/cypera-core/Cargo.toml
-  line: 1
-  module: cypera-core
-- name: description
-  kind: function
-  file: crates/cypera-core/src/manifest.rs
-  line: 108
-  module: cypera-core
-- name: description_inherited
-  kind: function
-  file: crates/cypera-core/src/manifest.rs
-  line: 119
-  module: cypera-core
-- name: error
-  kind: module
-  file: crates/cypera-core/src/lib.rs
-  line: 21
-  module: cypera-core
-- name: guess_layer
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 52
-  module: cypera-core
-- name: has_serde_default
-  kind: function
-  file: crates/cypera-core/src/config.rs
-  line: 51
-  module: cypera-core
-- name: join_doc
-  kind: function
-  file: crates/cypera-core/src/config.rs
-  line: 59
-  module: cypera-core
-- name: manifest
-  kind: module
-  file: crates/cypera-core/src/lib.rs
-  line: 22
-  module: cypera-core
-- name: members
-  kind: function
-  file: crates/cypera-core/src/manifest.rs
-  line: 75
-  module: cypera-core
-- name: name
-  kind: function
-  file: crates/cypera-core/src/manifest.rs
-  line: 102
-  module: cypera-core
-- name: parse
-  kind: function
-  file: crates/cypera-core/src/manifest.rs
-  line: 66
-  module: cypera-core
-- name: parse
-  kind: function
-  file: crates/cypera-core/src/manifest.rs
-  line: 94
-  module: cypera-core
-- name: purpose_from_entry_doc
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 203
-  module: cypera-core
-- name: purpose_tidy_caps_at_sentence_boundary
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 382
-  module: cypera-core
-- name: purpose_tidy_drops_fences_and_unwraps_links
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 408
-  module: cypera-core
-- name: purpose_tidy_short_doc_passes_through
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 400
-  module: cypera-core
-- name: rank
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 106
-  module: cypera-core
-api_omitted: 18
+api_omitted: 74
 deps:
 - serde
 - thiserror
@@ -213,6 +213,7 @@ deps:
 - crate_map
 - error
 - manifest
+- repo_config
 notes: ''
 verify:
 - crates/cypera-core/Cargo.toml
@@ -222,6 +223,7 @@ verify:
 - crates/cypera-core/src/error.rs
 - crates/cypera-core/src/lib.rs
 - crates/cypera-core/src/manifest.rs
+- crates/cypera-core/src/repo_config.rs
 provenance:
   files:
   - crates/cypera-core/Cargo.toml
@@ -231,14 +233,16 @@ provenance:
   - crates/cypera-core/src/error.rs
   - crates/cypera-core/src/lib.rs
   - crates/cypera-core/src/manifest.rs
+  - crates/cypera-core/src/repo_config.rs
   hashes:
   - 0fdc762e1ea7c1110d7a6cb821eecc15ce6007d4
-  - 404750fa02686c9a89a5105b210058b3eaa1ab23
-  - c3ee256e81b1ae9801076c487a22dd1700d8d0d0
-  - 3d3e43cfc02cc5a003d7ee75b142fe4c48108a81
-  - 9f9df258a3fe385b0d14677b796eccc4f3ca2308
-  - 4721fed300c6b2dbafb8480395a9645c83399d28
+  - e0716ced24578076619804a9a8ec493179b268fc
+  - 8c2fb799d1d4ea8c28b8b6bb257de90a9cc77c4e
+  - ef49f4e55b1f64c27c8e95e06d796baae6e5200c
+  - 3f7dff7265c399ce83ddf06a5113dd9d5753ad4e
+  - a6fd5e5869c3640859ca1a2b07d8dfadcbc9fb26
   - 9a0ee360aeee514fda7330190ca266904c9f71a6
-  commit_sha: cf22987efb8bae518e7a6ccfca4d97f0125faee4
-  generated_at: '1794727162'
+  - b3225c29e329fe5910eca0075cec159b3ebcfd99
+  commit_sha: 67324bab6a951e6cac7d53bde5966652981284c5
+  generated_at: '1794757852'
   generator: kuda-template/0.1.4

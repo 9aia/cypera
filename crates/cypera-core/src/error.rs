@@ -18,6 +18,15 @@ pub enum CyperaError {
         /// Workspace root manifest path.
         path: String,
     },
+    /// A `cypera.toml` is structurally valid TOML but semantically
+    /// wrong (e.g. a splice with both/neither mode).
+    #[error("{path}: {message}")]
+    Config {
+        /// Config file the problem is in.
+        path: String,
+        /// What's wrong.
+        message: String,
+    },
     /// A referenced member manifest is missing a required field.
     #[error("{path}: missing `{field}`")]
     MissingField {

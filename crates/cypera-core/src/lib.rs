@@ -20,12 +20,21 @@ pub mod config;
 pub mod crate_map;
 pub mod error;
 pub mod manifest;
+pub mod repo_config;
 
-pub use cli::render_cli_page;
-pub use config::{render_config_page, scan_config_structs, ConfigField, ConfigStruct};
+pub use cli::{anchor, esc_md, parse_help, prog_name, render_cli_page, render_help_walk, HelpNode};
+pub use config::{
+    render_config_doc_page, render_config_page, scan_config_structs, type_label, ConfigDocSection,
+    ConfigDocStyle, ConfigField, ConfigStruct,
+};
 pub use crate_map::{
-    crate_map_from_workspace, crate_map_table, purpose_from_entry_doc, render_crate_map,
-    scan_entry_source, CrateEntry, CrateMap, EntryScan,
+    crate_api_page, crate_map_from_workspace, crate_map_table, guess_layer_as,
+    purpose_from_entry_doc, render_crate_map, scan_entry_source, splice_first_table, splice_marked,
+    CrateEntry, CrateMap, EntryScan, DEFAULT_LAYER_ORDER,
 };
 pub use error::CyperaError;
 pub use manifest::{CrateManifest, WorkspaceManifest};
+pub use repo_config::{
+    CliConfig, ConfigDocConfig, ConfigSection, ConfigStructRef, CrateApiConfig, CrateMapConfig,
+    CrateMapSplice, RepoConfig,
+};

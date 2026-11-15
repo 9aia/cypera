@@ -1,6 +1,12 @@
-//! CLI-reference page rendering — wraps the markdown a sibling CLI
-//! emits from its `gen-cli-docs` verb (clap-markdown output) into a
-//! standalone VitePress reference page.
+//! CLI-reference generation — two producers:
+//!
+//! - [`render_cli_page`] wraps `gen-cli-docs` markdown (the
+//!   clap-markdown body sibling CLIs emit) in a page — the original
+//!   cypera surface.
+//! - [`parse_help`]/[`render_help_walk`] are the pure half of the
+//!   `docs/gen-cli-docs.py` port: clap `--help` text → structured
+//!   nodes → the exact markdown those scripts emitted. The IO half
+//!   (cargo build + process spawn) lives in `cypera-cli`.
 
 /// Wrap `gen-cli-docs` markdown body in a reference page with the
 /// given title. `body` is passed through verbatim — the generator
@@ -20,16 +26,438 @@ pub fn render_cli_page(title: &str, body: &str) -> String {
     out.join("\n")
 }
 
+// ---------- `--help` walk (gen-cli-docs.py port) ----------
+
+/// One `(signature, description)` row inside a help section.
+pub type HelpEntry = (String, String);
+
+/// One node of the walked command tree — a subcommand path plus
+/// its parsed `--help`.
+#[derive(Debug, Clone)]
+pub struct HelpNode {
+    /// Subcommand path below the program name (`[]` = root).
+    pub path: Vec<String>,
+    /// The `Usage: …` payload.
+    pub usage: String,
+    /// Pre-section prose (the about text), whitespace-joined.
+    pub about: String,
+    /// `(section-name, entries)` in first-seen order — python dict
+    /// semantics (a repeated section name replaces its entries).
+    pub sections: Vec<(String, Vec<HelpEntry>)>,
+}
+
+impl HelpNode {
+    /// Entries of a named section (`"Commands"`, `"Options"`, …).
+    pub fn section(&self, name: &str) -> &[HelpEntry] {
+        self.sections
+            .iter()
+            .find(|(n, _)| n == name)
+            .map_or(&[], |(_, e)| e.as_slice())
+    }
+}
+
+/// `^([A-Z][A-Za-z ]*):\s*$` — clap's section headers, hand-rolled
+/// (no regex dep): uppercase-led, letters/spaces, colon, EOL.
+fn is_section_header(line: &str) -> Option<&str> {
+    let t = line.trim_end();
+    let body = t.strip_suffix(':')?;
+    let mut chars = body.chars();
+    let first = chars.next()?;
+    if !first.is_ascii_uppercase() {
+        return None;
+    }
+    if !chars.all(|c| c.is_ascii_alphabetic() || c == ' ') {
+        return None;
+    }
+    // The name itself must not be blank and must not start with a
+    // space run longer than the header allows — python's `[A-Z]`
+    // anchor already guarantees the first char; `[A-Za-z ]*` permits
+    // interior spaces ("Command Line:").
+    if body.trim().is_empty() {
+        return None;
+    }
+    Some(body.trim_end())
+}
+
+/// `-h, --help  Print help` → `(sig, desc)`. Descriptions align
+/// after a 2+-whitespace gap; flag specs never contain one.
+fn split_desc(head: &str) -> (String, String) {
+    let head = head.trim();
+    let bytes = head.as_bytes();
+    // First run of >=2 whitespace chars — the sig/desc gap.
+    for i in 0..bytes.len().saturating_sub(1) {
+        if bytes[i].is_ascii_whitespace() && bytes[i + 1].is_ascii_whitespace() {
+            // Back up to the start of the whitespace run.
+            let mut j = i;
+            while j > 0 && bytes[j - 1].is_ascii_whitespace() {
+                j -= 1;
+            }
+            let sig = head[..j].trim().to_string();
+            // `re.split(r"\s{2,}", tail)` then `" ".join(parts[1:])` —
+            // the tail opens with the gap so its first chunk is "".
+            let parts = split_gaps(&head[j..]);
+            let desc = parts[1..].join(" ");
+            return (sig, desc);
+        }
+    }
+    (head.to_string(), String::new())
+}
+
+/// Split on runs of >=2 whitespace, preserving single spaces inside
+/// chunks — python `re.split(r"\s{2,}", s.strip())`.
+fn split_gaps(s: &str) -> Vec<String> {
+    let mut parts = vec![String::new()];
+    let mut ws_run = 0usize;
+    for c in s.chars() {
+        if c.is_whitespace() {
+            ws_run += 1;
+            continue;
+        }
+        if ws_run >= 2 {
+            parts.push(String::new());
+        } else if ws_run == 1 {
+            if let Some(p) = parts.last_mut() {
+                p.push(' ');
+            }
+        }
+        ws_run = 0;
+        if let Some(p) = parts.last_mut() {
+            p.push(c);
+        }
+    }
+    parts
+}
+
+/// `true` when `line` (already stripped) starts a new entry inside
+/// `section` at `indent` columns — python's `is_entry`/`nentry`.
+fn is_entry(section: &str, stripped: &str, indent: usize) -> bool {
+    match section {
+        "Commands" => indent <= 4 && !stripped.starts_with('-'),
+        "Options" | "Arguments" => {
+            stripped.starts_with('-')
+                || (section == "Arguments"
+                    && (stripped.starts_with('<') || stripped.starts_with('[')))
+        }
+        _ => false,
+    }
+}
+
+/// Parse clap `--help` output → `(usage, about, sections)`.
+/// Faithful port of the python `parse_help`.
+pub fn parse_help(text: &str) -> (String, String, Vec<(String, Vec<HelpEntry>)>) {
+    let lines: Vec<&str> = text.lines().collect();
+    let mut usage = String::new();
+    let mut about: Vec<String> = Vec::new();
+    let mut sections: Vec<(String, Vec<HelpEntry>)> = Vec::new();
+    let mut cur: Option<String> = None;
+    let mut entries: Vec<HelpEntry> = Vec::new();
+
+    macro_rules! flush {
+        () => {
+            if let Some(name) = cur.take() {
+                if let Some(slot) = sections.iter_mut().find(|(n, _)| *n == name) {
+                    slot.1 = std::mem::take(&mut entries);
+                } else {
+                    sections.push((name, std::mem::take(&mut entries)));
+                }
+            }
+        };
+    }
+
+    for (i, line) in lines.iter().enumerate() {
+        if let Some(rest) = line.strip_prefix("Usage: ") {
+            if usage.is_empty() {
+                usage = rest.trim().to_string();
+                continue;
+            }
+        }
+        if let Some(name) = is_section_header(line) {
+            flush!();
+            cur = Some(name.to_string());
+            continue;
+        }
+        let Some(section) = cur.clone() else {
+            if !line.trim().is_empty() {
+                about.push(line.trim().to_string());
+            }
+            continue;
+        };
+        let stripped = line.trim();
+        if stripped.is_empty() {
+            continue;
+        }
+        let indent = line.len() - line.trim_start().len();
+        if !is_entry(&section, stripped, indent) {
+            continue;
+        }
+        let (sig, desc) = split_desc(stripped);
+        // Continuation lines: deeper-indented prose after the head.
+        let mut cont: Vec<String> = Vec::new();
+        let mut j = i + 1;
+        while j < lines.len() {
+            let nl = lines[j];
+            let ns = nl.trim();
+            if ns.is_empty() {
+                break;
+            }
+            let nind = nl.len() - nl.trim_start().len();
+            if is_entry(&section, ns, nind) || nind <= indent {
+                break;
+            }
+            cont.push(ns.to_string());
+            j += 1;
+        }
+        let desc = if cont.is_empty() {
+            desc
+        } else {
+            let joined = cont.join(" ");
+            if desc.is_empty() {
+                joined
+            } else {
+                format!("{desc} {joined}")
+            }
+        };
+        entries.push((sig, desc));
+    }
+    flush!();
+    (usage, about.join(" ").trim().to_string(), sections)
+}
+
+/// Program name from a usage line — first `[\w-]+` token, `"cli"`
+/// when unparseable.
+pub fn prog_name(usage: &str) -> String {
+    let name: String = usage
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
+        .collect();
+    if name.is_empty() {
+        "cli".to_string()
+    } else {
+        name
+    }
+}
+
+/// `## \`lasius code-workspace generate\`` → `#lasius-code-workspace-generate`.
+pub fn anchor(label: &str) -> String {
+    label
+        .to_lowercase()
+        .replace('`', "")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+/// Escape `<`/`>` outside inline-code spans so Vue doesn't see
+/// elements — python `esc`.
+pub fn esc_md(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut in_code = false;
+    for c in text.chars() {
+        match c {
+            '`' => {
+                in_code = !in_code;
+                out.push(c);
+            }
+            '<' if !in_code => out.push_str("&lt;"),
+            '>' if !in_code => out.push_str("&gt;"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+/// Node label — `" ".join([name, *path])`.
+fn label(name: &str, path: &[String]) -> String {
+    let mut parts = vec![name.to_string()];
+    parts.extend(path.iter().cloned());
+    parts.join(" ")
+}
+
+/// Render the walked nodes as the cli.md page — byte-parity port
+/// of the python scripts' `main()` output. `title`, when set,
+/// replaces the fixed `# Command-Line Help for …` header (the
+/// `cypera.toml [cli].title` knob); default keeps the python shape.
+pub fn render_help_walk(name: &str, nodes: &[HelpNode], title: Option<&str>) -> String {
+    let mut out: Vec<String> = Vec::new();
+    match title {
+        Some(t) => {
+            out.push(format!("# {t}"));
+            out.push(String::new());
+        }
+        None => {
+            out.push(format!("# Command-Line Help for `{name}`"));
+            out.push(String::new());
+            out.push(format!(
+                "This document contains the help content for the `{name}` command-line program."
+            ));
+            out.push(String::new());
+        }
+    }
+    let about = nodes.first().map(|n| n.about.as_str()).unwrap_or("");
+    if !about.is_empty() {
+        out.push(esc_md(about));
+        out.push(String::new());
+    }
+    out.push("**Command Overview:**".to_string());
+    out.push(String::new());
+    for node in nodes {
+        let l = label(name, &node.path);
+        out.push(format!("* [`{l}`↴](#{})", anchor(&l)));
+    }
+    out.push(String::new());
+
+    for node in nodes {
+        let l = label(name, &node.path);
+        out.push(format!("## `{l}`"));
+        out.push(String::new());
+        if !node.about.is_empty() {
+            out.push(esc_md(&node.about));
+            out.push(String::new());
+        }
+        out.push(format!("**Usage:** `{}`", node.usage));
+        out.push(String::new());
+        for sec_name in ["Arguments", "Commands", "Options"] {
+            let entries = node.section(sec_name);
+            if entries.is_empty() {
+                continue;
+            }
+            out.push(format!("###### **{sec_name}:**"));
+            out.push(String::new());
+            for (sig, desc) in entries {
+                if sec_name == "Commands" {
+                    let sub = sig.split_whitespace().next().unwrap_or(sig);
+                    if sub == "help" {
+                        continue;
+                    }
+                    let d = esc_md(desc);
+                    out.push(format!(
+                        "* `{sub}`{}",
+                        if d.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" — {d}")
+                        }
+                    ));
+                } else {
+                    let d = esc_md(desc);
+                    out.push(format!(
+                        "* `{sig}`{}",
+                        if d.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" — {d}")
+                        }
+                    ));
+                }
+            }
+            out.push(String::new());
+        }
+    }
+    out.join("\n")
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
 
+    const HELP: &str = r#"lasius keeps clones in sync.
+
+Usage: lasius [OPTIONS] <COMMAND>
+
+Commands:
+  init     Bootstrap the workspace
+  clone    Clone missing repos        extra prose line
+  status   Show the board
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+      --json     Emit JSON
+
+Arguments:
+  <REPO>  Repo dir
+"#;
+
     #[test]
-    fn wraps_body_under_title() {
-        let md = render_cli_page("myco — commands", "## `status`\n\nShow the board.\n");
-        assert!(md.starts_with("# myco — commands\n"));
-        assert!(md.contains("## `status`"));
-        assert!(md.contains("generated by cypera gen cli"));
+    fn parses_usage_about_sections() {
+        let (usage, about, secs) = parse_help(HELP);
+        assert_eq!(usage, "lasius [OPTIONS] <COMMAND>");
+        assert_eq!(about, "lasius keeps clones in sync.");
+        let cmds = secs.iter().find(|(n, _)| n == "Commands").unwrap();
+        assert_eq!(cmds.1.len(), 4);
+        assert_eq!(cmds.1[1].0, "clone");
+        // continuation line joined into desc
+        assert!(cmds.1[1].1.contains("extra prose line"));
+        let opts = secs.iter().find(|(n, _)| n == "Options").unwrap();
+        assert_eq!(opts.1[0].0, "-h, --help");
+        assert_eq!(opts.1[0].1, "Print help");
+        assert_eq!(opts.1[1].0, "--json");
+        let args = secs.iter().find(|(n, _)| n == "Arguments").unwrap();
+        assert_eq!(args.1[0].0, "<REPO>");
+    }
+
+    #[test]
+    fn split_desc_two_space_gap() {
+        assert_eq!(
+            split_desc("-h, --help  Print help"),
+            ("-h, --help".to_string(), "Print help".to_string())
+        );
+        assert_eq!(
+            split_desc("--flag <V>  a  b"),
+            ("--flag <V>".to_string(), "a b".to_string())
+        );
+        assert_eq!(split_desc("nodesc"), ("nodesc".to_string(), String::new()));
+    }
+
+    #[test]
+    fn esc_only_outside_code() {
+        assert_eq!(esc_md("a <b> `c<d>`"), "a &lt;b&gt; `c<d>`");
+    }
+
+    #[test]
+    fn prog_and_anchor() {
+        assert_eq!(prog_name("lasius [OPTIONS]"), "lasius");
+        assert_eq!(prog_name(""), "cli");
+        assert_eq!(
+            anchor("lasius code-workspace generate"),
+            "lasius-code-workspace-generate"
+        );
+    }
+
+    #[test]
+    fn renders_python_shape() {
+        let (u, a, s) = parse_help(HELP);
+        let node = HelpNode {
+            path: vec![],
+            usage: u,
+            about: a,
+            sections: s,
+        };
+        let md = render_help_walk("lasius", &[node], None);
+        assert!(md.starts_with("# Command-Line Help for `lasius`\n\n"));
+        assert!(md.contains("This document contains the help content for the `lasius` command-line program.\n\nlasius keeps clones in sync.\n\n**Command Overview:**"));
+        assert!(md.contains("* [`lasius`↴](#lasius)"));
+        assert!(md.contains("## `lasius`\n\nlasius keeps clones in sync.\n\n**Usage:** `lasius [OPTIONS] <COMMAND>`"));
+        assert!(md.contains("###### **Commands:**\n\n* `init` — Bootstrap the workspace\n* `clone` — Clone missing repos extra prose line\n* `status` — Show the board\n"));
+        // `help` subcommand skipped in Commands list
+        assert!(!md.contains("* `help`"));
+        assert!(md.contains(
+            "###### **Options:**\n\n* `-h, --help` — Print help\n* `--json` — Emit JSON"
+        ));
+        assert!(md.contains("###### **Arguments:**\n\n* `<REPO>` — Repo dir"));
+    }
+
+    #[test]
+    fn title_override_replaces_header() {
+        let node = HelpNode {
+            path: vec![],
+            usage: "x".into(),
+            about: String::new(),
+            sections: vec![],
+        };
+        let md = render_help_walk("x", &[node], Some("Custom — title"));
+        assert!(md.starts_with("# Custom — title\n\n**Command Overview:**"));
+        assert!(!md.contains("Command-Line Help for"));
     }
 }

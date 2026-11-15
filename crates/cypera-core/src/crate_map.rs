@@ -48,8 +48,16 @@ pub struct CrateMap {
 /// Conventional layer guess from the crate name — the port-and-
 /// adapter naming convention (`<repo>-core` is domain, `-cli` the
 /// binary, bare `<repo>` the composition root, everything else an
-/// adapter/port). Callers may override per crate.
+/// adapter/port). Callers may override per crate; the unclassified
+/// fallback is `"adapter"` — see [`guess_layer_as`] for the
+/// `cypera.toml [crate_map].default_layer` knob.
 pub fn guess_layer(name: &str, repo: &str) -> String {
+    guess_layer_as(name, repo, "adapter")
+}
+
+/// [`guess_layer`] with a configurable unclassified fallback —
+/// the kuda/mimus `"impl"` convention.
+pub fn guess_layer_as(name: &str, repo: &str, default: &str) -> String {
     if name == repo {
         return "binary".to_string();
     }
@@ -57,29 +65,54 @@ pub fn guess_layer(name: &str, repo: &str) -> String {
     match suffix {
         "-core" | "-domain" => "domain",
         "-cli" => "binary",
-        _ => "adapter",
+        _ => default,
     }
     .to_string()
+}
+
+/// The canonical layer order — reproduces the relative ordering
+/// every per-repo `gen-crate-map.py` `ORDER` table agreed on.
+/// `cypera.toml [crate_map].order` replaces it wholesale when set.
+pub const DEFAULT_LAYER_ORDER: &[&str] = &[
+    "domain", "port", "adapter", "ops", "service", "engine", "driver", "testkit", "tooling",
+    "binary",
+];
+
+/// Sort rank for `layer` under `order` — position, or `len` when
+/// unlisted (unknown layers sort last, then by name).
+fn layer_rank(layer: &str, order: &[String]) -> usize {
+    if order.is_empty() {
+        return DEFAULT_LAYER_ORDER
+            .iter()
+            .position(|l| *l == layer)
+            .unwrap_or(DEFAULT_LAYER_ORDER.len());
+    }
+    order.iter().position(|l| l == layer).unwrap_or(order.len())
 }
 
 /// Build a [`CrateMap`] from a parsed workspace manifest and the
 /// per-member crate manifests. `members` pairs each declared member
 /// path with its parsed manifest; `entries` optionally pairs member
-/// path → [`EntryScan`].
+/// path → [`EntryScan`]. `order` is the `[crate_map].order` layer
+/// ranking (empty = [`DEFAULT_LAYER_ORDER`]); `default_layer`
+/// replaces the `"adapter"` guess fallback (`None` = `"adapter"`).
 pub fn crate_map_from_workspace(
     repo: &str,
     ws: &WorkspaceManifest,
     members: &[(String, CrateManifest)],
     entries: &[(String, EntryScan)],
     layer_overrides: &[(String, String)],
+    order: &[String],
+    default_layer: Option<&str>,
 ) -> Result<CrateMap, crate::error::CyperaError> {
+    let default = default_layer.unwrap_or("adapter");
     let mut crates = Vec::with_capacity(members.len());
     for (path, manifest) in members {
         let layer = layer_overrides
             .iter()
             .find(|(n, _)| n == manifest.name())
             .map(|(_, l)| l.clone())
-            .unwrap_or_else(|| guess_layer(manifest.name(), repo));
+            .unwrap_or_else(|| guess_layer_as(manifest.name(), repo, default));
         let entry = entries
             .iter()
             .find(|(p, _)| p == path)
@@ -97,30 +130,9 @@ pub fn crate_map_from_workspace(
             path: repo.to_string(),
         });
     }
-    // Stable layer order, then name — deterministic diffs. The rank
-    // is the union of the vocabularies the per-repo `gen-crate-map.py`
-    // scripts used (`domain`/`port`/`adapter`/`service`/`engine`/
-    // `driver`/`testkit`/`tooling`), which every repo's ORDER table
-    // agreed on relatively; `ops`/`binary` keep their heuristic
-    // slots, unknown layers sort last.
-    fn rank(layer: &str) -> u8 {
-        match layer {
-            "domain" => 0,
-            "port" => 1,
-            "adapter" => 2,
-            "ops" => 3,
-            "service" => 4,
-            "engine" => 5,
-            "driver" => 6,
-            "testkit" => 7,
-            "tooling" => 8,
-            "binary" => 9,
-            _ => 10,
-        }
-    }
     crates.sort_by(|a, b| {
-        rank(&a.layer)
-            .cmp(&rank(&b.layer))
+        layer_rank(&a.layer, order)
+            .cmp(&layer_rank(&b.layer, order))
             .then(a.name.cmp(&b.name))
     });
     Ok(CrateMap {
@@ -284,6 +296,69 @@ pub fn crate_map_table(map: &CrateMap) -> String {
     out.join("\n")
 }
 
+/// The rustdoc link-list page — one `- [crate](/<site>/api/<crate>/index.html) — <layer>`
+/// per crate, the `reference/crate-api.md` the per-repo
+/// `gen-crate-map.py` wrappers emitted as a second output.
+pub fn crate_api_page(site: &str, map: &CrateMap) -> String {
+    let mut out = vec![
+        "# Crate API".to_string(),
+        String::new(),
+        "Rustdoc for every workspace crate — public APIs are".to_string(),
+        "documented at source (doc comments).".to_string(),
+        String::new(),
+    ];
+    for c in &map.crates {
+        out.push(format!(
+            "- [{}](/{}/api/{}/index.html) — {}",
+            c.name,
+            site.trim_matches('/'),
+            c.name.replace('-', "_"),
+            c.layer
+        ));
+    }
+    out.join("\n") + "\n"
+}
+
+/// Splice `table` into `existing` after the first line containing
+/// `marker`: the run of `|…|` lines following the marker is
+/// replaced (the `<!-- crate-map -->` convention). `None` when the
+/// marker is absent.
+pub fn splice_marked(existing: &str, marker: &str, table: &str) -> Option<String> {
+    let mut lines: Vec<String> = existing.lines().map(str::to_string).collect();
+    let i = lines.iter().position(|l| l.contains(marker))?;
+    let mut k = i + 1;
+    while k < lines.len() && lines[k].starts_with('|') {
+        k += 1;
+    }
+    lines.splice(i + 1..k, table.lines().map(str::to_string));
+    Some(lines.join("\n") + "\n")
+}
+
+/// Splice `table` over the first `| crate | …` table in
+/// `existing` — the bupha/kuda/mimus wrapper convention (their
+/// architecture pages carry no marker). Returns the input
+/// unchanged when no crate table exists (the wrappers' no-op).
+pub fn splice_first_table(existing: &str, table: &str) -> String {
+    let mut lines: Vec<String> = existing.lines().map(str::to_string).collect();
+    let Some(start) = lines.iter().position(|l| l.starts_with("| crate")) else {
+        return existing.to_string();
+    };
+    // Require the `|---|` separator as the second line (the python
+    // regex `\| crate…\n\| *[-| ]+[- ]*\|`).
+    let has_sep = lines
+        .get(start + 1)
+        .is_some_and(|l| l.starts_with('|') && l.contains('-'));
+    if !has_sep {
+        return existing.to_string();
+    }
+    let mut k = start;
+    while k < lines.len() && lines[k].starts_with('|') {
+        k += 1;
+    }
+    lines.splice(start..k, table.lines().map(str::to_string));
+    lines.join("\n") + "\n"
+}
+
 /// Render the crate map as a markdown page: summary table, then a
 /// per-crate section with the lib.rs doc and module list when an
 /// [`EntryScan`] was supplied.
@@ -372,7 +447,7 @@ mod tests {
                 .unwrap(),
             ),
         ];
-        let map = crate_map_from_workspace("repo", &ws(), &members, &[], &[]).unwrap();
+        let map = crate_map_from_workspace("repo", &ws(), &members, &[], &[], &[], None).unwrap();
         assert_eq!(map.crates[0].name, "repo-core");
         assert_eq!(map.crates[0].layer, "domain");
         assert_eq!(map.crates[1].layer, "binary");
@@ -429,9 +504,83 @@ mod tests {
                 is_lib: true,
             },
         )];
-        let map = crate_map_from_workspace("repo", &ws(), &members, &entries, &[]).unwrap();
+        let map =
+            crate_map_from_workspace("repo", &ws(), &members, &entries, &[], &[], None).unwrap();
         let md = render_crate_map(&map);
         assert!(md.contains("| `repo-core` | domain | d \\| e |"));
         assert!(md.contains("Modules: `a`, `b`. Entry: `src/lib.rs`."));
+    }
+
+    #[test]
+    fn guess_layer_as_honors_default() {
+        assert_eq!(guess_layer_as("repo", "repo", "impl"), "binary");
+        assert_eq!(guess_layer_as("repo-core", "repo", "impl"), "domain");
+        assert_eq!(guess_layer_as("repo-cli", "repo", "impl"), "binary");
+        assert_eq!(guess_layer_as("repo-foo", "repo", "impl"), "impl");
+        assert_eq!(guess_layer_as("other", "repo", "impl"), "impl");
+    }
+
+    #[test]
+    fn crate_map_order_and_default_layer() {
+        let members = vec![
+            (
+                "crates/core".to_string(),
+                CrateManifest::parse(
+                    "crates/core/Cargo.toml",
+                    "[package]\nname = \"repo-core\"\n",
+                )
+                .unwrap(),
+            ),
+            (
+                "crates/thing".to_string(),
+                CrateManifest::parse(
+                    "crates/thing/Cargo.toml",
+                    "[package]\nname = \"repo-thing\"\n",
+                )
+                .unwrap(),
+            ),
+        ];
+        let entries = vec![];
+        let map = crate_map_from_workspace(
+            "repo",
+            &ws(),
+            &members,
+            &entries,
+            &[],
+            &["impl".to_string(), "domain".to_string()],
+            Some("impl"),
+        )
+        .unwrap();
+        // Custom order puts `impl` (repo-thing) before `domain`.
+        assert_eq!(map.crates[0].name, "repo-thing");
+        assert_eq!(map.crates[0].layer, "impl");
+        assert_eq!(map.crates[1].layer, "domain");
+    }
+
+    #[test]
+    fn splice_marked_replaces_table_run() {
+        // The convention: marker line, then the `|…|` table run.
+        let existing = "# Page\n\nintro\n\n<!-- crate-map -->\n| crate | layer |\n|---|---|\n| `old` | x |\n| `old2` | y |\n\ntail\n";
+        let table = "| crate | layer |\n|---|---|\n| `new` | domain |\n";
+        let out = splice_marked(existing, "<!-- crate-map -->", table).unwrap();
+        assert!(out.contains("| `new` | domain |"));
+        assert!(!out.contains("`old`"));
+        assert!(out.contains("tail"));
+        assert_eq!(
+            splice_marked("no marker", "<!-- crate-map -->", table),
+            None
+        );
+    }
+
+    #[test]
+    fn splice_first_table_replaces_first_crate_table() {
+        let existing =
+            "# Page\n\n| crate | layer |\n|---|---|\n| `old` | x |\n\nother | table |\n|---|---|\n";
+        let table = "| crate | layer |\n|---|---|\n| `new` | domain |\n";
+        let out = splice_first_table(existing, table);
+        assert!(out.contains("| `new` | domain |"));
+        assert!(!out.contains("`old`"));
+        // No crate table → input unchanged (wrapper no-op).
+        assert_eq!(splice_first_table("# nothing\n", table), "# nothing\n");
     }
 }

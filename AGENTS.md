@@ -16,8 +16,8 @@ for the *cypera*, the swift — docs that keep pace with the code.
 
 | Crate | Role |
 | --- | --- |
-| `crates/cypera-core` | Pure domain — `Cargo.toml` manifest models (`manifest`), crate-map model + renderer + entry-file scanner (`crate_map`), config-struct doc-comment scanner + renderer (`config`), CLI-page wrapper (`cli`). String in, markdown out; never touches `std::fs`/`std::process`. |
-| `crates/cypera-cli` | package `cypera` — the binary. `gen crate-map` (workspace walk, member-glob expansion, `src/lib.rs`/`main.rs` scan, `--layer` overrides, `--out` with `<!-- crate-map -->` marker splicing), `gen cli` (wrap `gen-cli-docs` markdown), `gen config` (`--file` scans, `--only` filter). Engine lib exposes `parse_from`/`run_from` per org convention. |
+| `crates/cypera-core` | Pure domain — `Cargo.toml` manifest models (`manifest`), crate-map model + renderer + entry-file scanner (`crate_map`), config-struct doc-comment scanner + renderer (`config`), CLI help-walk parser/renderer (`cli`), the `cypera.toml` schema (`repo_config`). String in, markdown out; never touches `std::fs`/`std::process`. |
+| `crates/cypera-cli` | package `cypera` — the binary. `gen crate-map` (workspace walk, member-glob expansion, `src/lib.rs`/`main.rs` scan, `--layer` overrides, `--out` with marker splicing), `gen cli` (recursive `<bin> --help` walk, or `--input` wrap of `gen-cli-docs` markdown), `gen config` (`--file` scans, `--only` filter, or `cypera.toml` curated sections), `check` (the docs contract — README/AGENTS/Diátaxis/freshness, `--repo`, `--json`). All three gens discover `cypera.toml` upward from `--repo`/cwd. Engine lib exposes `parse_from`/`run_from` per org convention. |
 | `xtask` (`cypera-xtask`) | `check` (fmt + clippy -D warnings) / `test` (nextest or cargo test) / `coverage` (llvm-cov) / `fmt` |
 
 ## Commands
@@ -41,10 +41,11 @@ not own:
 
 - **The docs sites themselves** — each repo's `docs/` worktree,
   VitePress config, and deploy pipeline stay per-repo.
-- **`gen-cli-docs` producers** — sibling CLIs emit the clap-markdown
-  body; cypera wraps it. If a repo lacks the verb, add it there.
-- **rustdoc** — `cargo doc` API pages remain a separate pipeline
-  (`gen-api.py`-style scripts); cypera covers markdown pages only.
+- **`gen-cli-docs` producers** — cypera's `gen cli` now walks
+  `<bin> --help` itself; the wrap mode (`--input`) remains for
+  repos still emitting clap-markdown bodies.
+- **rustdoc** — `cargo doc` API pages remain a separate pipeline;
+  cypera's `crate_api` config only emits the rustdoc *link list*.
 - **myco/sturn/kuda/tarsi** — ledger, coordination, code maps, and
   releases are their own repos' concerns.
 
@@ -56,6 +57,16 @@ not own:
 - No `unsafe`. Edition 2021.
 - `cypera-core` stays pure — no `std::fs`/`std::process`/`std::net`.
   IO lives in `cypera-cli`.
+- `cypera.toml` is the per-repo contract — every `gen-*.py`
+  wrapper's hard-coded layer maps, markers, curated struct lists,
+  titles, and preambles belong there, not in code. Schema lives in
+  `crates/cypera-core/src/repo_config.rs`; document changes in the
+  README + docs site.
+- `cypera check` encodes the org docs contract (README shape,
+  AGENTS.md sections, no CHANGELOG, no versions in prose, Diátaxis
+  layout, `docs:check` script, generated-file freshness). Extend the
+  rules in `crates/cypera-cli/src/check.rs` rather than re-inventing
+  per-repo checks.
 - Keep the binary dependency-light and sync; no async runtime.
 - English everywhere (code, comments, commit messages).
 - Commits: conventional prefixes (`feat:`/`fix:`/`refactor:`/`docs:`/`chore:`).

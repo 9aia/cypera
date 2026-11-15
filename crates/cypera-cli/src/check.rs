@@ -97,6 +97,7 @@ const CONTENT_RULE_NAMES: &[&str] = &[
     "index-router",
     "no-orphan-getting-started",
     "tutorial-count",
+    "tutorial-name",
 ];
 
 /// Entry point from `run()`.
@@ -125,6 +126,7 @@ pub fn run_check(repo: &Path, config: Option<&Path>, json_out: bool) -> Result<i
             let profile = profile_of(rc);
             rules.push(content_pages_rule(&root, profile));
             rules.push(tutorial_count_rule(&root, profile));
+            rules.push(tutorial_name_rule(&root, profile));
             rules.push(index_router_rule(&root, profile));
             rules.push(no_orphan_getting_started_rule(&root, profile));
         }
@@ -897,9 +899,11 @@ fn content_pages_rule(root: &Path, profile: Profile) -> Rule {
     }
 }
 
-/// `tutorial-count` — the golden path is one tutorial; `tutorials/`
-/// holds at most 2 markdown files (a second demotes to how-to).
-/// Applies to engine + library profiles; content exempt.
+/// `tutorial-count` — the golden path is exactly one tutorial.
+/// Engine profile: `tutorials/` holds **exactly** 1 markdown file
+/// (the single golden path — extras demote to `docs/how-to/`);
+/// library: at most 1. Content exempt. SKIP when `docs/` or
+/// `tutorials/` is absent — `docs-site`/`content-pages` own those.
 fn tutorial_count_rule(root: &Path, profile: Profile) -> Rule {
     const NAME: &str = "tutorial-count";
     if profile == Profile::Content {
@@ -926,12 +930,101 @@ fn tutorial_count_rule(root: &Path, profile: Profile) -> Rule {
     }
     let n = count_markdown(&dir);
     let evidence = vec![format!("docs/tutorials/: {n} markdown files")];
-    if n <= 2 {
+    let ok = match profile {
+        // Engine: the golden path is exactly one tutorial — zero
+        // means no onboarding path, more than one means the
+        // "which do I read?" fork the contract exists to prevent.
+        Profile::Engine => n == 1,
+        Profile::Library => n <= 1,
+        Profile::Content => unreachable!("content profile returned early"),
+    };
+    if ok {
         Rule::pass(NAME, evidence)
     } else {
         let mut evidence = evidence;
-        evidence.push("golden path = one tutorial — demote extras to docs/how-to/".into());
+        evidence.push(match profile {
+            Profile::Engine => "engine: golden path = exactly one tutorial — demote extras to \
+                 docs/how-to/"
+                .into(),
+            _ => "golden path = one tutorial — demote extras to docs/how-to/".into(),
+        });
         Rule::fail(NAME, evidence)
+    }
+}
+
+/// `tutorial-name` — the canonical tutorial filename is
+/// `getting-started.md`. Engine profile FAILs when `tutorials/`
+/// holds markdown files but none is `getting-started.md` — a
+/// lone differently-named tutorial breaks the convention just as
+/// much as extras do. Library and content profiles SKIP: the
+/// canonical name is an engine-repo contract, not a bar smaller
+/// docs trees must meet. SKIP when `docs/`/`tutorials/` is absent
+/// or holds no markdown at all.
+fn tutorial_name_rule(root: &Path, profile: Profile) -> Rule {
+    const NAME: &str = "tutorial-name";
+    if profile != Profile::Engine {
+        return Rule::skip(
+            NAME,
+            vec![format!(
+                "profile `{}` — canonical tutorial name enforced for engine only",
+                profile.as_str()
+            )],
+        );
+    }
+    let Some(docs) = docs_root(root) else {
+        return Rule::skip(
+            NAME,
+            vec!["docs/: missing — VitePress worktree not checked out".into()],
+        );
+    };
+    let dir = docs.join("tutorials");
+    if !dir.is_dir() {
+        return Rule::skip(
+            NAME,
+            vec!["docs/tutorials/: absent — nothing to name".into()],
+        );
+    }
+    // Markdown file names under tutorials/, recursively — same
+    // reach as `count_markdown`.
+    let mut names = Vec::new();
+    let mut stack = vec![dir.clone()];
+    while let Some(d) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.extension().and_then(|x| x.to_str()) == Some("md") {
+                if let Some(n) = p.file_name().map(|n| n.to_string_lossy().into_owned()) {
+                    names.push(n);
+                }
+            }
+        }
+    }
+    names.sort();
+    if names.is_empty() {
+        return Rule::skip(NAME, vec!["docs/tutorials/: no markdown files".into()]);
+    }
+    if names
+        .iter()
+        .any(|n| n.eq_ignore_ascii_case("getting-started.md"))
+    {
+        Rule::pass(
+            NAME,
+            vec![format!(
+                "docs/tutorials/: canonical `getting-started.md` present ({names:?})"
+            )],
+        )
+    } else {
+        Rule::fail(
+            NAME,
+            vec![
+                format!("docs/tutorials/: files {names:?} — none is `getting-started.md`"),
+                "canonical tutorial = `docs/tutorials/getting-started.md`".into(),
+            ],
+        )
     }
 }
 
@@ -1253,5 +1346,153 @@ mod tests {
         let links = quadrant_links(text);
         assert_eq!(links.len(), 1);
         assert!(links.contains("tutorials"));
+    }
+
+    // ---------- tutorial-count / tutorial-name fixtures ----------
+
+    /// Build a throwaway repo root under the temp dir holding the
+    /// given repo-relative files (`docs/tutorials/x.md`, …).
+    /// Caller removes it with [`fixture_cleanup`].
+    fn fixture_root(tag: &str, files: &[&str]) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("cypera-check-test-{}-{tag}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        for f in files {
+            let p = dir.join(f);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(&p, "# t\n").unwrap();
+        }
+        dir
+    }
+
+    fn fixture_cleanup(root: &Path) {
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn tutorial_count_engine_requires_exactly_one() {
+        // Two tutorials — even the canonical pair — FAIL.
+        let root = fixture_root(
+            "count-2",
+            &[
+                "docs/tutorials/getting-started.md",
+                "docs/tutorials/extra.md",
+            ],
+        );
+        let r = tutorial_count_rule(&root, Profile::Engine);
+        assert_eq!(r.status, Status::Fail);
+        fixture_cleanup(&root);
+
+        // Exactly one passes.
+        let root = fixture_root("count-1", &["docs/tutorials/getting-started.md"]);
+        let r = tutorial_count_rule(&root, Profile::Engine);
+        assert_eq!(r.status, Status::Pass);
+        fixture_cleanup(&root);
+
+        // Zero fails too — no golden path at all.
+        let root = fixture_root("count-0", &["docs/index.md"]);
+        std::fs::create_dir_all(root.join("docs/tutorials")).unwrap();
+        let r = tutorial_count_rule(&root, Profile::Engine);
+        assert_eq!(r.status, Status::Fail);
+        fixture_cleanup(&root);
+    }
+
+    #[test]
+    fn tutorial_count_library_keeps_at_most_one() {
+        let root = fixture_root(
+            "lib-count-2",
+            &["docs/tutorials/a.md", "docs/tutorials/b.md"],
+        );
+        let r = tutorial_count_rule(&root, Profile::Library);
+        assert_eq!(r.status, Status::Fail);
+        fixture_cleanup(&root);
+
+        let root = fixture_root("lib-count-1", &["docs/tutorials/a.md"]);
+        let r = tutorial_count_rule(&root, Profile::Library);
+        assert_eq!(r.status, Status::Pass);
+        fixture_cleanup(&root);
+    }
+
+    #[test]
+    fn tutorial_count_content_and_absent_skip() {
+        let root = fixture_root(
+            "count-content",
+            &[
+                "docs/tutorials/a.md",
+                "docs/tutorials/b.md",
+                "docs/tutorials/c.md",
+            ],
+        );
+        let r = tutorial_count_rule(&root, Profile::Content);
+        assert_eq!(r.status, Status::Skip);
+        fixture_cleanup(&root);
+
+        // No docs/ worktree and no tutorials/ dir both SKIP.
+        let root = fixture_root("count-nodocs", &["README.md"]);
+        assert_eq!(
+            tutorial_count_rule(&root, Profile::Engine).status,
+            Status::Skip
+        );
+        assert_eq!(
+            tutorial_count_rule(&root, Profile::Library).status,
+            Status::Skip
+        );
+        fixture_cleanup(&root);
+    }
+
+    #[test]
+    fn tutorial_name_engine_requires_getting_started() {
+        // The lone tutorial is not the canonical name — FAIL even
+        // though tutorial-count passes (the tarsi case).
+        let root = fixture_root("name-lone", &["docs/tutorials/start.md"]);
+        assert_eq!(
+            tutorial_count_rule(&root, Profile::Engine).status,
+            Status::Pass
+        );
+        let r = tutorial_name_rule(&root, Profile::Engine);
+        assert_eq!(r.status, Status::Fail);
+        fixture_cleanup(&root);
+
+        // Canonical name present (with or without extras) passes
+        // the name rule — tutorial-count owns the extras.
+        let root = fixture_root(
+            "name-ok",
+            &[
+                "docs/tutorials/getting-started.md",
+                "docs/tutorials/extra.md",
+            ],
+        );
+        let r = tutorial_name_rule(&root, Profile::Engine);
+        assert_eq!(r.status, Status::Pass);
+        fixture_cleanup(&root);
+    }
+
+    #[test]
+    fn tutorial_name_library_and_content_skip() {
+        // Library never enforces the canonical name.
+        let root = fixture_root("name-lib", &["docs/tutorials/start.md"]);
+        assert_eq!(
+            tutorial_name_rule(&root, Profile::Library).status,
+            Status::Skip
+        );
+        assert_eq!(
+            tutorial_name_rule(&root, Profile::Content).status,
+            Status::Skip
+        );
+        fixture_cleanup(&root);
+
+        // Empty tutorials/ dir: nothing to name — SKIP, and
+        // tutorial-count still FAILs for engine (n = 0).
+        let root = fixture_root("name-empty", &["docs/index.md"]);
+        std::fs::create_dir_all(root.join("docs/tutorials")).unwrap();
+        assert_eq!(
+            tutorial_name_rule(&root, Profile::Engine).status,
+            Status::Skip
+        );
+        assert_eq!(
+            tutorial_count_rule(&root, Profile::Engine).status,
+            Status::Fail
+        );
+        fixture_cleanup(&root);
     }
 }

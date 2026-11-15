@@ -105,6 +105,7 @@ pub const CHECK_RULE_NAMES: &[&str] = &[
     "no-version-in-prose",
     "readme",
     "tutorial-count",
+    "tutorial-name",
 ];
 
 /// The docs-content profiles `[check] profile` accepts — the
@@ -132,9 +133,10 @@ pub struct CheckConfig {
     pub skip: Vec<String>,
     /// Docs-content profile — one of [`CHECK_PROFILES`]
     /// (`engine`/`library`/`content`). Drives the content rules
-    /// (`content-pages`, `tutorial-count`, `index-router`,
-    /// `no-orphan-getting-started`). Unknown values warn and
-    /// fall back to `engine`; absent means `engine`.
+    /// (`content-pages`, `tutorial-count`, `tutorial-name`,
+    /// `index-router`, `no-orphan-getting-started`). Unknown
+    /// values warn and fall back to `engine`; absent means
+    /// `engine`.
     #[serde(default)]
     pub profile: Option<String>,
 }

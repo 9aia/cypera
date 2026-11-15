@@ -12,7 +12,7 @@ unit-testable without a filesystem.
 |---|---|---|
 | `cypera-core` | domain | Pure domain logic for cypera — doc-generation models and markdown renderers |
 | `cypera-xtask` | adapter | Workspace automation — check / test / coverage / fmt |
-| `cypera` | binary | Reusable documentation/reference-generation utilities for the 9aia org |
+| `cypera` | binary | cypera — reusable documentation/reference generation for the 9aia org. |
 
 Regenerate the table above (never hand-edit it):
 

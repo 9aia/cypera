@@ -1,0 +1,118 @@
+name: cypera
+path: Cargo.toml
+purpose: Reusable documentation/reference generation for the 9aia org — the
+api:
+- name: Cli
+  kind: type
+  file: crates/cypera-cli/src/lib.rs
+  line: 28
+  module: cypera
+- name: Cmd
+  kind: type
+  file: crates/cypera-cli/src/lib.rs
+  line: 36
+  module: cypera
+- name: Gen
+  kind: type
+  file: crates/cypera-cli/src/lib.rs
+  line: 47
+  module: cypera
+- name: cypera
+  kind: module
+  file: Cargo.toml
+  line: 1
+  module: cypera
+- name: cypera
+  kind: module
+  file: crates/cypera-cli/Cargo.toml
+  line: 1
+  module: cypera
+- name: emit
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 317
+  module: cypera
+- name: expand_members
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 155
+  module: cypera
+- name: gen_cli
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 279
+  module: cypera
+- name: gen_config
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 292
+  module: cypera
+- name: gen_crate_map
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 192
+  module: cypera
+- name: main
+  kind: function
+  file: crates/cypera-cli/src/main.rs
+  line: 5
+  module: cypera
+- name: parse_from
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 102
+  module: cypera
+- name: parse_layers
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 142
+  module: cypera
+- name: run
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 111
+  module: cypera
+- name: run_from
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 118
+  module: cypera
+- name: run_gen
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 126
+  module: cypera
+- name: scan_entry
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 182
+  module: cypera
+deps:
+- anyhow
+- clap
+- cypera-core
+- serde
+- toml
+- anyhow
+- clap
+- cypera-core
+notes: ''
+verify:
+- Cargo.toml
+- crates/cypera-cli/Cargo.toml
+- crates/cypera-cli/src/lib.rs
+- crates/cypera-cli/src/main.rs
+provenance:
+  files:
+  - Cargo.toml
+  - crates/cypera-cli/Cargo.toml
+  - crates/cypera-cli/src/lib.rs
+  - crates/cypera-cli/src/main.rs
+  hashes:
+  - ae84f2606c2a6b6f2d9e325f64fa54e8fb653c32
+  - a9c4e15443f79653bca7daae890603e7df94a6f6
+  - 7e64a5f84a4c527005f09a433649ce74d12e817a
+  - fa7b5ea5bde09bd04d92ae1b63028ec43cd30f9d
+  commit_sha: 95b9d820bbd7d0795e57e1aad81c7b5460e898f3
+  generated_at: '1794725248'
+  generator: kuda-template/0.1.4

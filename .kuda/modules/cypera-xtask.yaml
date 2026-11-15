@@ -1,0 +1,35 @@
+name: cypera-xtask
+path: xtask/Cargo.toml
+purpose: Workspace automation — check / test / coverage / fmt
+api:
+- name: cypera-xtask
+  kind: module
+  file: xtask/Cargo.toml
+  line: 1
+  module: cypera-xtask
+- name: main
+  kind: function
+  file: xtask/src/main.rs
+  line: 23
+  module: cypera-xtask
+- name: run
+  kind: function
+  file: xtask/src/main.rs
+  line: 13
+  module: cypera-xtask
+deps:
+- anyhow
+notes: ''
+verify:
+- xtask/Cargo.toml
+- xtask/src/main.rs
+provenance:
+  files:
+  - xtask/Cargo.toml
+  - xtask/src/main.rs
+  hashes:
+  - 2b734b480600780580fedb9450c7ad393f7c2e03
+  - f5c01a226b1fd16019a7fd9378233a70e8cb40d1
+  commit_sha: 95b9d820bbd7d0795e57e1aad81c7b5460e898f3
+  generated_at: '1794725248'
+  generator: kuda-template/0.1.4

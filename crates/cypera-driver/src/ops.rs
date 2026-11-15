@@ -166,7 +166,7 @@ fn values(v: &Value) -> Vec<String> {
     }
 }
 
-/// `cli.<verb>` params → cypera argv (no argv[0] — `run` prepends
+/// `cli.<verb>` params → cypera argv (no argv\[0] — `run` prepends
 /// it). Declared params map by kind — positionals land last, in
 /// schema order; repeatable opts (`--layer`, `--file`, `--only`,
 /// `--prefix`) flatten array values into repeated flags.

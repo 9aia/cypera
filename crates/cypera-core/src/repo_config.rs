@@ -118,7 +118,7 @@ pub struct CrateMapConfig {
 
 /// One `[[crate_map.splices]]` entry — replace a crate-map table
 /// inside an existing page. Exactly one of `marker`/`first_table`
-/// must be set (validated by [`CrateMapConfig::validate`]).
+/// must be set (validated by [`RepoConfig::validate`]).
 #[derive(Debug, Clone, Deserialize)]
 pub struct CrateMapSplice {
     /// Target file, relative to the repo root.
@@ -188,8 +188,8 @@ pub struct CliConfig {
     /// `run` passthrough shim (`["run"]`) or empty for a plain bin.
     #[serde(default)]
     pub prefix: Vec<String>,
-    /// Page title override. Default: `Command-Line Help for
-    /// \`<prog>\`` derived from the root usage line (the python
+    /// Page title override. Default: `Command-Line Help for <prog>`
+    /// derived from the root usage line (the python
     /// scripts' fixed header).
     #[serde(default)]
     pub title: Option<String>,

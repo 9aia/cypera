@@ -229,7 +229,7 @@ pub fn run(cli: Cli) -> Result<i32> {
     }
 }
 
-/// Convenience: parse `argv` (including argv[0]) and run.
+/// Convenience: parse `argv` (including argv\[0]) and run.
 pub fn run_from<I, T>(args: I) -> Result<i32>
 where
     I: IntoIterator<Item = T>,

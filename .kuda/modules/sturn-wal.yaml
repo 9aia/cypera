@@ -2,15 +2,50 @@ name: sturn-wal
 path: refs/sturn/wal/cypera
 purpose: sturn coordination WAL — claims, writes, snaps, review events in refs/sturn/*
 api:
+- name: luis:claim@cypera#0c96db52
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 6
+  module: sturn-wal
+- name: luis:claim@cypera#2ba6e300
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 4
+  module: sturn-wal
 - name: luis:claim@cypera#54e08261
   kind: record
   file: refs/sturn/wal/cypera
   line: 1
   module: sturn-wal
+- name: luis:claim@cypera#65da42d4
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 11
+  module: sturn-wal
 - name: luis:claim@cypera#8abfc9c7
   kind: record
   file: refs/sturn/wal/cypera
   line: 2
+  module: sturn-wal
+- name: luis:claim@cypera#959af70d
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 10
+  module: sturn-wal
+- name: luis:claim@cypera#afb9390f
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 8
+  module: sturn-wal
+- name: luis:claim@cypera#ef3af241
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 7
+  module: sturn-wal
+- name: luis:claim@cypera#f6fd2e98
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 9
   module: sturn-wal
 - name: luis:claim@cypera-docs-migration#69854cbb
   kind: record
@@ -27,23 +62,66 @@ api:
   file: refs/sturn/wal/cypera-docs-migration
   line: 1
   module: sturn-wal
+- name: luis:claim@docs-gate#14f92a25
+  kind: record
+  file: refs/sturn/wal/docs-gate
+  line: 1
+  module: sturn-wal
+- name: luis:claim@docs-gate#359d55a0
+  kind: record
+  file: refs/sturn/wal/docs-gate
+  line: 2
+  module: sturn-wal
+- name: luis:claim@docs-gate#aca37c76
+  kind: record
+  file: refs/sturn/wal/docs-gate
+  line: 3
+  module: sturn-wal
+- name: luis:presence@cypera#0badb03b
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 3
+  module: sturn-wal
+- name: luis:presence@cypera#e4c5c9e7
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 5
+  module: sturn-wal
 - name: luis:presence@cypera-docs-migration#4ee1b60f
   kind: record
   file: refs/sturn/wal/cypera-docs-migration
   line: 4
+  module: sturn-wal
+- name: luis:release@cypera#3889dcbf
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 14
+  module: sturn-wal
+- name: luis:release@cypera#5304c49e
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 13
+  module: sturn-wal
+- name: luis:release@cypera#90b27d0c
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 12
   module: sturn-wal
 deps: []
 notes: ''
 verify:
 - refs/sturn/wal/cypera
 - refs/sturn/wal/cypera-docs-migration
+- refs/sturn/wal/docs-gate
 provenance:
   files:
   - refs/sturn/wal/cypera
   - refs/sturn/wal/cypera-docs-migration
+  - refs/sturn/wal/docs-gate
   hashes:
-  - 8abfc9c783b53222c804a9256575fd328abb7cbd
+  - 3889dcbf0089402523e610b2b7aa3aeb007ae6fa
   - 4ee1b60f90ab8df6a55e09c0f63efa28c0f46773
-  commit_sha: d7a4d2b6c37cddb2bae714812f7a60009c363120
-  generated_at: '1794758501'
+  - aca37c764c214a91c0e3db7f6af4a43a9181232f
+  commit_sha: a5474a01e2b1f5e28b2fd1aa0652eed37a3d5abc
+  generated_at: '1794762961'
   generator: kuda-template/0.1.4

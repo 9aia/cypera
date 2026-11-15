@@ -2,15 +2,20 @@ name: cypera-core
 path: crates/cypera-core/Cargo.toml
 purpose: Pure domain logic for cypera — doc-generation models and markdown renderers
 api:
+- name: ApiConfig
+  kind: type
+  file: crates/cypera-core/src/repo_config.rs
+  line: 153
+  module: cypera-core
 - name: CliConfig
   kind: type
   file: crates/cypera-core/src/repo_config.rs
-  line: 139
+  line: 178
   module: cypera-core
 - name: ConfigDocConfig
   kind: type
   file: crates/cypera-core/src/repo_config.rs
-  line: 168
+  line: 215
   module: cypera-core
 - name: ConfigDocSection
   kind: type
@@ -30,7 +35,7 @@ api:
 - name: ConfigSection
   kind: type
   file: crates/cypera-core/src/repo_config.rs
-  line: 236
+  line: 283
   module: cypera-core
 - name: ConfigStruct
   kind: type
@@ -40,12 +45,12 @@ api:
 - name: ConfigStructRef
   kind: type
   file: crates/cypera-core/src/repo_config.rs
-  line: 222
+  line: 269
   module: cypera-core
 - name: CrateApiConfig
   kind: type
   file: crates/cypera-core/src/repo_config.rs
-  line: 129
+  line: 139
   module: cypera-core
 - name: CrateEntry
   kind: type
@@ -65,12 +70,12 @@ api:
 - name: CrateMapConfig
   kind: type
   file: crates/cypera-core/src/repo_config.rs
-  line: 80
+  line: 90
   module: cypera-core
 - name: CrateMapSplice
   kind: type
   file: crates/cypera-core/src/repo_config.rs
-  line: 113
+  line: 123
   module: cypera-core
 - name: CyperaError
   kind: type
@@ -110,7 +115,7 @@ api:
 - name: RepoConfig
   kind: type
   file: crates/cypera-core/src/repo_config.rs
-  line: 64
+  line: 69
   module: cypera-core
 - name: SRC
   kind: const
@@ -137,6 +142,11 @@ api:
   file: crates/cypera-core/src/cli.rs
   line: 241
   module: cypera-core
+- name: api
+  kind: module
+  file: crates/cypera-core/src/lib.rs
+  line: 18
+  module: cypera-core
 - name: bare_package_has_no_members
   kind: function
   file: crates/cypera-core/src/manifest.rs
@@ -160,12 +170,12 @@ api:
 - name: cli
   kind: module
   file: crates/cypera-core/src/lib.rs
-  line: 18
+  line: 19
   module: cypera-core
 - name: config
   kind: module
   file: crates/cypera-core/src/lib.rs
-  line: 19
+  line: 20
   module: cypera-core
 - name: crate_api_page
   kind: function
@@ -180,7 +190,7 @@ api:
 - name: crate_map
   kind: module
   file: crates/cypera-core/src/lib.rs
-  line: 20
+  line: 21
   module: cypera-core
 - name: crate_map_from_workspace
   kind: function
@@ -192,22 +202,13 @@ api:
   file: crates/cypera-core/src/crate_map.rs
   line: 524
   module: cypera-core
-- name: crate_map_sorts_domain_first
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 431
-  module: cypera-core
-- name: crate_map_table
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 283
-  module: cypera-core
-api_omitted: 74
+api_omitted: 81
 deps:
 - serde
 - thiserror
 - toml
 - serde
+- api
 - cli
 - config
 - crate_map
@@ -217,6 +218,7 @@ deps:
 notes: ''
 verify:
 - crates/cypera-core/Cargo.toml
+- crates/cypera-core/src/api.rs
 - crates/cypera-core/src/cli.rs
 - crates/cypera-core/src/config.rs
 - crates/cypera-core/src/crate_map.rs
@@ -227,6 +229,7 @@ verify:
 provenance:
   files:
   - crates/cypera-core/Cargo.toml
+  - crates/cypera-core/src/api.rs
   - crates/cypera-core/src/cli.rs
   - crates/cypera-core/src/config.rs
   - crates/cypera-core/src/crate_map.rs
@@ -236,13 +239,14 @@ provenance:
   - crates/cypera-core/src/repo_config.rs
   hashes:
   - 0fdc762e1ea7c1110d7a6cb821eecc15ce6007d4
+  - 205ec969beaa7bfe996ec683147ce09e8d378084
   - e0716ced24578076619804a9a8ec493179b268fc
   - 8c2fb799d1d4ea8c28b8b6bb257de90a9cc77c4e
   - ef49f4e55b1f64c27c8e95e06d796baae6e5200c
   - 3f7dff7265c399ce83ddf06a5113dd9d5753ad4e
-  - a6fd5e5869c3640859ca1a2b07d8dfadcbc9fb26
+  - 98cc8bd923f33b3f63c8179a02b0cf203b256343
   - 9a0ee360aeee514fda7330190ca266904c9f71a6
-  - 1dafbe7165321e093d42cab628e614550e231194
-  commit_sha: d7a4d2b6c37cddb2bae714812f7a60009c363120
-  generated_at: '1794758501'
+  - 91eb3602fce4c86df792411377322983c5bec61e
+  commit_sha: a5474a01e2b1f5e28b2fd1aa0652eed37a3d5abc
+  generated_at: '1794762961'
   generator: kuda-template/0.1.4

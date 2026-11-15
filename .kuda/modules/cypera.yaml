@@ -5,27 +5,27 @@ api:
 - name: CANON
   kind: const
   file: crates/cypera-cli/src/check.rs
-  line: 415
+  line: 469
   module: cypera
 - name: Cli
   kind: type
   file: crates/cypera-cli/src/lib.rs
-  line: 34
+  line: 35
   module: cypera
 - name: CliOpts
   kind: type
   file: crates/cypera-cli/src/lib.rs
-  line: 549
+  line: 626
   module: cypera
 - name: Cmd
   kind: type
   file: crates/cypera-cli/src/lib.rs
-  line: 42
+  line: 43
   module: cypera
 - name: Gen
   kind: type
   file: crates/cypera-cli/src/lib.rs
-  line: 68
+  line: 69
   module: cypera
 - name: NAME
   kind: const
@@ -35,32 +35,32 @@ api:
 - name: NAME
   kind: const
   file: crates/cypera-cli/src/check.rs
-  line: 199
+  line: 205
   module: cypera
 - name: NAME
   kind: const
   file: crates/cypera-cli/src/check.rs
-  line: 244
+  line: 250
   module: cypera
 - name: NAME
   kind: const
   file: crates/cypera-cli/src/check.rs
-  line: 267
+  line: 274
   module: cypera
 - name: NAME
   kind: const
   file: crates/cypera-cli/src/check.rs
-  line: 410
+  line: 464
   module: cypera
 - name: NAME
   kind: const
   file: crates/cypera-cli/src/check.rs
-  line: 458
+  line: 512
   module: cypera
 - name: NAME
   kind: const
   file: crates/cypera-cli/src/check.rs
-  line: 596
+  line: 650
   module: cypera
 - name: Rule
   kind: type
@@ -70,12 +70,12 @@ api:
 - name: SKIP_DIRS
   kind: const
   file: crates/cypera-cli/src/check.rs
-  line: 311
+  line: 325
   module: cypera
 - name: SYNONYMS
   kind: const
   file: crates/cypera-cli/src/check.rs
-  line: 416
+  line: 470
   module: cypera
 - name: Status
   kind: type
@@ -85,12 +85,17 @@ api:
 - name: agents_rule
   kind: function
   file: crates/cypera-cli/src/check.rs
-  line: 198
+  line: 204
+  module: cypera
+- name: api_root_env_name
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 1032
   module: cypera
 - name: apply_crate_map_outputs
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 450
+  line: 527
   module: cypera
 - name: as_str
   kind: function
@@ -100,37 +105,42 @@ api:
 - name: build_crate_map
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 363
+  line: 443
   module: cypera
 - name: changelog_rule
   kind: function
   file: crates/cypera-cli/src/check.rs
-  line: 243
+  line: 249
   module: cypera
 - name: check
   kind: module
   file: crates/cypera-cli/src/lib.rs
-  line: 934
+  line: 1276
   module: cypera
 - name: cli_help_page
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 632
+  line: 722
   module: cypera
 - name: command
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 181
+  line: 220
   module: cypera
 - name: config_dir
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 286
+  line: 338
   module: cypera
 - name: config_doc_page
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 784
+  line: 900
+  module: cypera
+- name: copy_dir_all
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 1055
   module: cypera
 - name: cypera
   kind: module
@@ -145,32 +155,32 @@ api:
 - name: discover_config
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 255
+  line: 307
   module: cypera
 - name: docs_check_script_rule
   kind: function
   file: crates/cypera-cli/src/check.rs
-  line: 595
+  line: 649
   module: cypera
 - name: docs_site_rule
   kind: function
   file: crates/cypera-cli/src/check.rs
-  line: 409
+  line: 463
   module: cypera
 - name: emit
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 910
+  line: 1252
   module: cypera
 - name: emit_to_path
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 914
+  line: 1256
   module: cypera
 - name: expand_members
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 323
+  line: 403
   module: cypera
 - name: fail
   kind: function
@@ -180,29 +190,19 @@ api:
 - name: find_versions
   kind: function
   file: crates/cypera-cli/src/check.rs
-  line: 351
+  line: 405
   module: cypera
 - name: freshness_rule
   kind: function
   file: crates/cypera-cli/src/check.rs
-  line: 457
+  line: 511
   module: cypera
-- name: gen_cli
+- name: gen_api
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 558
+  line: 1081
   module: cypera
-- name: gen_config
-  kind: function
-  file: crates/cypera-cli/src/lib.rs
-  line: 723
-  module: cypera
-- name: gen_crate_map
-  kind: function
-  file: crates/cypera-cli/src/lib.rs
-  line: 485
-  module: cypera
-api_omitted: 18
+api_omitted: 24
 deps:
 - anyhow
 - clap
@@ -231,9 +231,9 @@ provenance:
   hashes:
   - ae84f2606c2a6b6f2d9e325f64fa54e8fb653c32
   - 568fdff16e38026abf786625ce824023846ed5ee
-  - e6eb828ce2bddb5b50eadae17a1b4b509352b41f
-  - 195e8605bb06acaaf22483298fc35a9507887e6f
+  - be6edea26f0935ef9c5b2074b4c023a42c6b364f
+  - bb649d1591ee42282a25b26a4e07d5a7f837f7f3
   - fa7b5ea5bde09bd04d92ae1b63028ec43cd30f9d
-  commit_sha: d7a4d2b6c37cddb2bae714812f7a60009c363120
-  generated_at: '1794758501'
+  commit_sha: a5474a01e2b1f5e28b2fd1aa0652eed37a3d5abc
+  generated_at: '1794762961'
   generator: kuda-template/0.1.4

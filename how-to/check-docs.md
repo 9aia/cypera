@@ -25,6 +25,17 @@ Exit status is non-zero when any rule fails; `SKIP` never fails.
 | `docs-check-script` | `docs/package.json` has a `docs:check` script. |
 | `generated-fresh` | Every output declared in `cypera.toml` regenerates byte-identically — cypera rebuilds each page in memory and diffs (no writes). Without `cypera.toml` the rule skips. |
 
+Profile-driven rules (gated by `[check] profile` in `cypera.toml`;
+all SKIP without one, and when the `docs/` worktree is absent):
+
+| rule | what it checks |
+| --- | --- |
+| `content-pages` | The required docs tree per profile — `engine`: all four Diátaxis quadrant dirs, ≥1 tutorial, ≥3 how-tos, and `explanation/{architecture,concepts,boundaries,decisions}.md`; `library`: `index.md` + `explanation/{architecture,concepts}.md`; `content`: exempt. |
+| `tutorial-count` | `docs/tutorials/` holds exactly one markdown file for `engine` (the single golden path), at most one for `library`; `content` exempt. |
+| `tutorial-name` | The canonical tutorial filename is `docs/tutorials/getting-started.md` — `engine` FAILs when `tutorials/` has markdown but none is `getting-started.md`; `library`/`content` SKIP (engine-only contract). |
+| `index-router` | `docs/index.md` links to at least 3 of the 4 quadrant dirs, routing each reader journey. |
+| `no-orphan-getting-started` | No `getting-started.md` at the `docs/` root — the golden path lives in `docs/tutorials/`. |
+
 Every finding carries `file:line` evidence where applicable.
 
 A repo that legitimately can't satisfy a rule — a content-only

@@ -20,7 +20,7 @@ pack (`libraries/cypera`) — a generated `bins[]` shim over
 installed:
 
 ```bash
-tamias install ./libraries/cypera   # from a checkout (after cargo xtask pack)
+tamias install --allow-drivers ./libraries/cypera   # from a checkout (after cargo xtask pack)
 ```
 
 From a checkout without tamias:

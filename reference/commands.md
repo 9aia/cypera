@@ -35,4 +35,19 @@ Scan Rust sources for `pub struct` doc comments → field tables.
 | `--title <TITLE>` | Page title. Default: `Config reference` |
 | `--out <OUT>` | Write to this file instead of stdout |
 
+## `cypera gen api`
+
+`cargo doc --workspace --no-deps` → `<target>/doc` copied into the
+docs site's `public/api/` + a styled crate index — the
+`docs/gen-api*.py` port. Output is a gitignored build artifact.
+
+| Option | Description |
+| --- | --- |
+| `--repo <REPO>` | Repo root — the `cargo doc`/`cargo metadata` cwd. A `<NAME>_ROOT` env var (the `cypera.toml` dir's basename uppercased) overrides it — the python `TAMIAS_ROOT`/`MYCO_ROOT` convention |
+| `--out <OUT>` | API output dir override — replaces `[api].out`/`docs/public/api`; a relative path resolves against the cwd |
+| `--target-dir <TARGET_DIR>` | Cargo target dir for the doc build, exported as `CARGO_TARGET_DIR` when unset (`[api].target_dir` fallback) |
+
+`[api]` in `cypera.toml` supplies `out`/`prefix`/`title`/
+`target_dir` — all optional.
+
 Global: `cypera --help`, `cypera --version`.

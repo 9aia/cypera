@@ -30,6 +30,36 @@ file = "docs/explanation/architecture.md"
 marker = "<!-- crate-map -->"
 ```
 
+## `[api]` — `cypera gen api`
+
+The rustdoc API site — successor to the per-repo `docs/gen-api.py`
++ `docs/gen-api-index.py` pair (and the inline `docs:api` shell
+bupha/kuda/mimus carried). `gen api` runs `cargo doc --workspace
+--no-deps` in the repo, resolves the real target dir via `cargo
+metadata`, empties the api dir, copies `<target>/doc` into it, and
+writes a styled `index.html` listing the crate dirs. Output is a
+gitignored build artifact — `check` freshness does not apply. Every
+key is optional; absent `[api]` means the python defaults.
+
+| key | type | meaning |
+| --- | --- | --- |
+| `out` | string | Rustdoc site dir, repo-relative. Default `docs/public/api`. A `--out` flag overrides it (a path, resolved against the cwd — run from the docs worktree to land in a detached docs checkout). |
+| `prefix` | string | Crate-dir name prefix the index lists and the title is built from — the python `startswith("<repo>")` filter. Default: the repo directory name. |
+| `title` | string | Index `<title>`/`<h1>` text. Default `"{prefix} — Crate API"`. |
+| `target_dir` | string | Repo-relative cargo target dir exported as `CARGO_TARGET_DIR` for the doc build **when the env var is unset** — the myco `target/docs-api` isolation convention (a shared target dir served stale rmeta). |
+
+Repo-root resolution keeps the python `<NAME>_ROOT` env convention:
+`<NAME>` is the `cypera.toml` dir's basename uppercased (`tamias` →
+`TAMIAS_ROOT`), and when set it overrides `--repo` — how detached-sha
+doc pipelines point cargo at the real checkout while `--out
+public/api` (cwd-relative, from the docs worktree) picks the output.
+
+```toml
+[api]
+out        = "docs/public/api"
+target_dir = "target/docs-api"   # myco's isolated doc target
+```
+
 ## `[cli]` — `cypera gen cli`
 
 A recursive `<bin> --help` walk that reproduces the per-repo

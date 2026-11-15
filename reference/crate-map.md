@@ -30,7 +30,7 @@ config-reference page renderer (successor to
 - [`cli`] — the CLI-reference page wrapper for `gen-cli-docs`
 output (the `clap-markdown` markdown sibling CLIs emit).
 
-Modules: `cli`, `config`, `crate_map`, `error`, `manifest`, `repo_config`. Entry: `src/lib.rs`.
+Modules: `api`, `cli`, `config`, `crate_map`, `error`, `manifest`, `repo_config`. Entry: `src/lib.rs`.
 
 ### `cypera-driver`
 
@@ -109,6 +109,7 @@ a per-repo `cypera.toml` discovered upward from `--repo`.
 cypera gen crate-map [--repo <path>] [--config <path>] [--out <file>] [--layer <crate=layer>]…
 cypera gen cli       [--repo <path>] [--config <path>] [--input <file|->] [--out <file>]
 cypera gen config    [--repo <path>] [--config <path>] [--file <rs>]… [--out <file>]
+cypera gen api       [--repo <path>] [--config <path>] [--out <dir>] [--target-dir <dir>]
 cypera check         [--repo <path>] [--config <path>] [--json]
 ```
 

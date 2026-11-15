@@ -269,6 +269,9 @@ fn version_prose_rule(root: &Path) -> Result<Rule> {
     let mut hits = Vec::new();
     let mut scanned = 0usize;
     walk_prose(root, &mut |path, rel| {
+        if is_generated_reference(&rel) {
+            return;
+        }
         scanned += 1;
         let Ok(text) = std::fs::read_to_string(path) else {
             return;
@@ -323,6 +326,13 @@ const SKIP_DIRS: &[&str] = &[
     ".vitepress",
 ];
 
+/// `docs/**/reference/` is generated-only per the docs contract —
+/// its content is generator output, gated by the freshness rule.
+fn is_generated_reference(rel: &str) -> bool {
+    let parts: Vec<&str> = rel.split('/').collect();
+    parts.contains(&"reference") && parts.first() == Some(&"docs")
+}
+
 /// Recursive prose-file walk — `.md`/`.txt`, skipping
 /// [`SKIP_DIRS`] and dot-dirs other than `docs`-style trees.
 fn walk_prose(root: &Path, f: &mut impl FnMut(&Path, String)) -> Result<()> {
@@ -372,19 +382,14 @@ fn mask_urls(line: &str) -> String {
         {
             j += 1;
         }
-        for k in i..j {
-            masked[k] = true;
+        for m in masked.iter_mut().take(j).skip(i) {
+            *m = true;
         }
         i = j;
     }
     let mut out = String::with_capacity(line.len());
-    for (idx, (pos, ch)) in chars.iter().enumerate() {
-        let _ = idx;
-        if masked[*pos] {
-            out.push(' ');
-        } else {
-            out.push(*ch);
-        }
+    for (pos, ch) in chars {
+        out.push(if masked[pos] { ' ' } else { ch });
     }
     out
 }

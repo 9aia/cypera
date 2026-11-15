@@ -1,0 +1,30 @@
+# cypera — the org docs/reference generator as a tamias package.
+#
+# `cargo xtask pack` release-builds `tamias-driver-cypera` into
+# `drivers/bin/<host-triple>/` (gitignored — a build artifact) and
+# this manifest ships it as a bundled driver. `tamias install
+# ./libraries/cypera` (or the packed `.tgz` / a registry ref)
+# registers the driver into `<tamias-home>/drivers/` and deploys the
+# `cypera` bin below by default.
+#
+# The `cypera` shim is a generated script → `tamias bin exec` →
+# `tamias-driver-cypera cli --dir <pkg> --name cypera <argv>` → the
+# cypera engine lib's `run_from` in-process with inherited stdio.
+# That is full argv parity with the `cypera` binary: `--help`/
+# `version`, globals before the verb, `--json`, and stdin-bound
+# flags (`gen cli --input -`) all stream end-to-end. No
+# `tools/bin/` payload bin: every cypera verb is bounded, so the
+# whole surface rides the same shim.
+name: cypera
+version: "0.1.0"
+type: files
+description: >-
+  Reusable documentation/reference generation for the 9aia org —
+  crate maps, CLI references, config references, and the docs
+  contract check, driven by a per-repo `cypera.toml`. Every verb
+  rides the tamias-driver-cypera engine passthrough.
+
+bins:
+  - name: cypera
+    shim: cli
+    driver: cypera

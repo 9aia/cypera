@@ -1,0 +1,241 @@
+name: cypera-driver
+path: crates/cypera-driver/Cargo.toml
+purpose: tamias-driver-cypera — pavo driver exposing a cypera workspace's engine ops (no views)
+api:
+- name: Engine
+  kind: type
+  file: crates/cypera-driver/src/surface.rs
+  line: 20
+  module: cypera-driver
+- name: READ_ONLY
+  kind: const
+  file: crates/cypera-driver/src/ops.rs
+  line: 42
+  module: cypera-driver
+- name: SKIP_PARAMS
+  kind: const
+  file: crates/cypera-driver/src/ops.rs
+  line: 37
+  module: cypera-driver
+- name: SURFACES
+  kind: const
+  file: crates/cypera-driver/src/ops.rs
+  line: 33
+  module: cypera-driver
+- name: argv
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 173
+  module: cypera-driver
+- name: argv_check_maps_json_flag
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 330
+  module: cypera-driver
+- name: argv_splits_dotted_names_and_maps_flags
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 311
+  module: cypera-driver
+- name: bin
+  kind: function
+  file: crates/cypera-driver/tests/e2e.rs
+  line: 10
+  module: cypera-driver
+- name: capabilities_json
+  kind: function
+  file: crates/cypera-driver/src/main.rs
+  line: 67
+  module: cypera-driver
+- name: cli_shim_help_parity
+  kind: function
+  file: crates/cypera-driver/tests/e2e.rs
+  line: 109
+  module: cypera-driver
+- name: cli_shim_strips_driver_flags
+  kind: function
+  file: crates/cypera-driver/tests/e2e.rs
+  line: 82
+  module: cypera-driver
+- name: cypera-driver
+  kind: module
+  file: crates/cypera-driver/Cargo.toml
+  line: 1
+  module: cypera-driver
+- name: dispatch
+  kind: function
+  file: crates/cypera-driver/src/main.rs
+  line: 75
+  module: cypera-driver
+- name: driver
+  kind: function
+  file: crates/cypera-driver/tests/e2e.rs
+  line: 22
+  module: cypera-driver
+- name: driver_passes_pavo_conformance
+  kind: function
+  file: crates/cypera-driver/tests/conformance.rs
+  line: 14
+  module: cypera-driver
+- name: engine_argv
+  kind: function
+  file: crates/cypera-driver/src/main.rs
+  line: 118
+  module: cypera-driver
+- name: engine_exit
+  kind: function
+  file: crates/cypera-driver/src/main.rs
+  line: 139
+  module: cypera-driver
+- name: kind
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 90
+  module: cypera-driver
+- name: main
+  kind: function
+  file: crates/cypera-driver/src/main.rs
+  line: 156
+  module: cypera-driver
+- name: manifest
+  kind: function
+  file: crates/cypera-driver/src/main.rs
+  line: 57
+  module: cypera-driver
+- name: manifest
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 122
+  module: cypera-driver
+- name: manifest_and_capabilities_verbs
+  kind: function
+  file: crates/cypera-driver/tests/e2e.rs
+  line: 34
+  module: cypera-driver
+- name: manifest_lists_every_verb_as_cli_query
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 284
+  module: cypera-driver
+- name: op
+  kind: function
+  file: crates/cypera-driver/src/surface.rs
+  line: 25
+  module: cypera-driver
+- name: op_cmd
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 70
+  module: cypera-driver
+- name: op_of
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 144
+  module: cypera-driver
+- name: op_of_accepts_cli_prefix_only
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 274
+  module: cypera-driver
+- name: ops
+  kind: module
+  file: crates/cypera-driver/src/main.rs
+  line: 45
+  module: cypera-driver
+- name: ops_manifest_lists_engine_verbs
+  kind: function
+  file: crates/cypera-driver/tests/e2e.rs
+  line: 47
+  module: cypera-driver
+- name: param_json
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 103
+  module: cypera-driver
+- name: repo_root
+  kind: function
+  file: crates/cypera-driver/tests/e2e.rs
+  line: 15
+  module: cypera-driver
+- name: run_op
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 226
+  module: cypera-driver
+- name: run_passthrough_runs_engine_argv
+  kind: function
+  file: crates/cypera-driver/tests/e2e.rs
+  line: 68
+  module: cypera-driver
+- name: run_verb
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 240
+  module: cypera-driver
+- name: scalar
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 152
+  module: cypera-driver
+- name: serve
+  kind: function
+  file: crates/cypera-driver/src/main.rs
+  line: 149
+  module: cypera-driver
+- name: skipped
+  kind: function
+  file: crates/cypera-driver/src/ops.rs
+  line: 79
+  module: cypera-driver
+- name: stdout
+  kind: function
+  file: crates/cypera-driver/tests/e2e.rs
+  line: 29
+  module: cypera-driver
+- name: surface
+  kind: module
+  file: crates/cypera-driver/src/main.rs
+  line: 47
+  module: cypera-driver
+- name: surface
+  kind: function
+  file: crates/cypera-driver/src/surface.rs
+  line: 31
+  module: cypera-driver
+api_omitted: 4
+deps:
+- clap
+- cypera
+- pavo-driver-kit
+- pavo-protocol
+- serde_json
+- pavo-testkit
+- clap
+- serde_json
+- pavo_protocol
+notes: ''
+verify:
+- crates/cypera-driver/Cargo.toml
+- crates/cypera-driver/src/main.rs
+- crates/cypera-driver/src/ops.rs
+- crates/cypera-driver/src/surface.rs
+- crates/cypera-driver/tests/conformance.rs
+- crates/cypera-driver/tests/e2e.rs
+provenance:
+  files:
+  - crates/cypera-driver/Cargo.toml
+  - crates/cypera-driver/src/main.rs
+  - crates/cypera-driver/src/ops.rs
+  - crates/cypera-driver/src/surface.rs
+  - crates/cypera-driver/tests/conformance.rs
+  - crates/cypera-driver/tests/e2e.rs
+  hashes:
+  - 66c42cd6e979727106ac8cf2b72ff009504b022f
+  - a7557e3d72e24122934a2fa0eea9480daa043b1f
+  - 3d7228ac0a0004cf818718c58227c5d9fb0b6c34
+  - 567b1270e782880b09d9914ca6d1bad56131d3e5
+  - 83735e5f5cb3f4e9fb7f63be64d018207474e0fe
+  - caa6c829b9b119db2eabacca7b219426a446e72f
+  commit_sha: d7a4d2b6c37cddb2bae714812f7a60009c363120
+  generated_at: '1794758501'
+  generator: kuda-template/0.1.4

@@ -7,6 +7,11 @@ api:
   file: refs/sturn/wal/cypera
   line: 1
   module: sturn-wal
+- name: luis:claim@cypera#8abfc9c7
+  kind: record
+  file: refs/sturn/wal/cypera
+  line: 2
+  module: sturn-wal
 - name: luis:claim@cypera-docs-migration#69854cbb
   kind: record
   file: refs/sturn/wal/cypera-docs-migration
@@ -37,8 +42,8 @@ provenance:
   - refs/sturn/wal/cypera
   - refs/sturn/wal/cypera-docs-migration
   hashes:
-  - 54e08261737f9e79edf807271fe1cd00d540ac34
+  - 8abfc9c783b53222c804a9256575fd328abb7cbd
   - 4ee1b60f90ab8df6a55e09c0f63efa28c0f46773
-  commit_sha: 67324bab6a951e6cac7d53bde5966652981284c5
-  generated_at: '1794757852'
+  commit_sha: d7a4d2b6c37cddb2bae714812f7a60009c363120
+  generated_at: '1794758501'
   generator: kuda-template/0.1.4

@@ -3,7 +3,7 @@ name = "cypera-xtask"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Workspace automation — check / test / coverage / fmt"
+description = "Workspace automation — check / test / coverage / pack / install / fmt"
 publish = false
 
 [lints]
@@ -11,3 +11,4 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
+serde_json.workspace = true

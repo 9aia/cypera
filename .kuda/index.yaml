@@ -4,6 +4,7 @@ purpose: Reusable documentation/reference generation for the 9aia org — the
 modules:
 - cypera
 - cypera-core
+- cypera-driver
 - cypera-xtask
 - docs
 - project
@@ -11,21 +12,23 @@ modules:
 commands:
 - cargo check
 - cargo test --workspace
-tree_digest: 1f1640832b3078d877570f991b89dfd9f123bab2
-files_total: 33
+tree_digest: 030f7445f62483ec197faef51e934e8f24852e09
+files_total: 39
 provenance:
   files:
   - Cargo.toml
   - README.md
   - crates/cypera-cli/Cargo.toml
   - crates/cypera-core/Cargo.toml
+  - crates/cypera-driver/Cargo.toml
   - xtask/Cargo.toml
   hashes:
   - ae84f2606c2a6b6f2d9e325f64fa54e8fb653c32
-  - 60b3b16e2c610d50108545e27b2a0f3c0f97605d
+  - 96fade3552c48889cafb3fc99d2a80a4c4970de8
   - 568fdff16e38026abf786625ce824023846ed5ee
   - 0fdc762e1ea7c1110d7a6cb821eecc15ce6007d4
-  - 2b734b480600780580fedb9450c7ad393f7c2e03
-  commit_sha: 67324bab6a951e6cac7d53bde5966652981284c5
-  generated_at: '1794757852'
+  - 66c42cd6e979727106ac8cf2b72ff009504b022f
+  - b6257cf8d05d3c91d273d54f8d36e46faf9e0c9b
+  commit_sha: d7a4d2b6c37cddb2bae714812f7a60009c363120
+  generated_at: '1794758501'
   generator: kuda/0.1.0

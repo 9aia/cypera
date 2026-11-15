@@ -1,9 +1,13 @@
-//! cypera-xtask — workspace automation: check / test / coverage / fmt.
+//! cypera-xtask — workspace automation: check / test / coverage /
+//! pack / install / fmt.
 //!
 //! ```text
 //! cargo xtask check      # fmt --check + clippy -D warnings
 //! cargo xtask test       # cargo nextest run (falls back to cargo test)
 //! cargo xtask coverage   # llvm-cov report (extra args pass through)
+//! cargo xtask pack       # stage libraries/cypera driver payload
+//!                        # (release tamias-driver-cypera → drivers/bin/<triple>/)
+//! cargo xtask install    # release-build tamias-driver-cypera → ~/.local/bin
 //! cargo xtask fmt        # cargo fmt --all
 //! ```
 
@@ -18,6 +22,103 @@ fn run(program: &str, args: &[&str]) -> bool {
             false
         }
     }
+}
+
+/// Captured stdout of a command — for probes like `rustc -vV` and
+/// `cargo metadata`.
+fn run_out(args: &[&str]) -> Option<String> {
+    let (prog, rest) = args.split_first()?;
+    let out = Command::new(prog).args(rest).output().ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// The effective target dir — `cargo metadata` reports it, which keeps
+/// `pack`/`install` correct under a shared CARGO_TARGET_DIR
+/// (`target/release` relative to the workspace is stale).
+fn target_dir() -> anyhow::Result<std::path::PathBuf> {
+    let out = Command::new("cargo")
+        .args(["metadata", "--no-deps", "--format-version", "1"])
+        .output()?;
+    let meta: serde_json::Value = serde_json::from_slice(&out.stdout)?;
+    meta.get("target_directory")
+        .and_then(|v| v.as_str())
+        .map(std::path::PathBuf::from)
+        .ok_or_else(|| anyhow::anyhow!("cargo metadata: no target_directory"))
+}
+
+/// The host target triple — the `drivers/bin/<triple>/` selector
+/// tamias uses for compiled driver payloads.
+fn host_triple() -> String {
+    run_out(&["rustc", "-vV"])
+        .and_then(|v| {
+            v.lines()
+                .find_map(|l| l.strip_prefix("host: ").map(str::to_string))
+        })
+        .unwrap_or_else(|| "x86_64-unknown-linux-gnu".to_string())
+}
+
+/// `cargo xtask pack` — stage the tamias pack payload:
+/// release-build `tamias-driver-cypera` and drop it under
+/// `libraries/cypera/drivers/bin/<host-triple>/` — the
+/// bundled-driver dir `tamias install` registers into
+/// `<tamias-home>/drivers/`. Gitignored on purpose: the binary is a
+/// build artifact; the committed pack is just `tamias.yaml` + this
+/// staging verb.
+fn pack() -> anyhow::Result<()> {
+    anyhow::ensure!(
+        run("cargo", &["build", "--release", "-p", "cypera-driver"]),
+        "cargo build --release -p cypera-driver failed"
+    );
+    let triple = host_triple();
+    let dest_dir = std::path::PathBuf::from("libraries/cypera/drivers/bin").join(&triple);
+    std::fs::create_dir_all(&dest_dir)?;
+    let src = target_dir()?.join("release/tamias-driver-cypera");
+    let dest = dest_dir.join("tamias-driver-cypera");
+    std::fs::copy(&src, &dest)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755));
+    }
+    println!("pack staged: {}", dest.display());
+    println!();
+    println!("install the cypera command (generated bins[] shim):");
+    println!("  tamias install --allow-drivers ./libraries/cypera");
+    println!("  # or a pinned tarball: tamias bundle pack libraries/cypera");
+    Ok(())
+}
+
+/// `cargo xtask install` — release-build `tamias-driver-cypera` and
+/// copy it to `~/.local/bin` (idempotent, PATH-friendly name). The
+/// `cypera` cargo bin still exists for development, but the
+/// *command* users install ships as the tamias pack (`cargo xtask
+/// pack` + `tamias install ./libraries/cypera`); this installs the
+/// driver the shim resolves.
+fn install() -> anyhow::Result<()> {
+    anyhow::ensure!(
+        run("cargo", &["build", "--release", "-p", "cypera-driver"]),
+        "cargo build --release -p cypera-driver failed"
+    );
+    let home = std::env::var_os("HOME")
+        .map_or_else(|| std::path::PathBuf::from("/"), std::path::PathBuf::from);
+    let out = home.join(".local/bin");
+    std::fs::create_dir_all(&out)?;
+    let bin = "tamias-driver-cypera";
+    let dst = out.join(bin);
+    // Atomic replace — a running driver holds the old inode busy
+    // ("text file busy" on plain copy).
+    std::fs::copy(
+        target_dir()?.join("release").join(bin),
+        out.join(format!(".{bin}.new")),
+    )?;
+    std::fs::rename(out.join(format!(".{bin}.new")), &dst)?;
+    println!("installed {bin} to {}", out.display());
+    println!();
+    println!("install the cypera command (generated bins[] shim):");
+    println!("  cargo xtask pack && tamias install --allow-drivers ./libraries/cypera");
+    Ok(())
 }
 
 fn main() -> ExitCode {
@@ -57,9 +158,23 @@ fn main() -> ExitCode {
             }
             run("cargo", &argv)
         }
+        Some("pack") => match pack() {
+            Ok(()) => true,
+            Err(e) => {
+                eprintln!("xtask: pack failed: {e:#}");
+                false
+            }
+        },
+        Some("install") => match install() {
+            Ok(()) => true,
+            Err(e) => {
+                eprintln!("xtask: install failed: {e:#}");
+                false
+            }
+        },
         Some("fmt") => run("cargo", &["fmt", "--all"]),
         _ => {
-            eprintln!("usage: cargo xtask <check|test|coverage|fmt>");
+            eprintln!("usage: cargo xtask <check|test|coverage|pack|install|fmt>");
             return ExitCode::from(2);
         }
     };

@@ -10,3 +10,6 @@ docs/
 # kuda
 .kuda/index.sqlite
 .kuda/meta.json
+
+# tamias pack build artifacts (cargo xtask pack stages these)
+/libraries/cypera/drivers/

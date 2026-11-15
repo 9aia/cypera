@@ -1,0 +1,49 @@
+[package]
+name = "cypera-driver"
+description = "tamias-driver-cypera — pavo driver exposing a cypera workspace's engine ops (no views)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["cypera", "documentation", "pavo", "driver"]
+categories = ["development-tools"]
+
+[[bin]]
+name = "tamias-driver-cypera"
+path = "src/main.rs"
+
+[features]
+# Embedded surfaces (pavo-driver-kit's surface layer) — optional,
+# acyclic: the driver gains an `mcp` argv verb that serves its own
+# ops manifest; the standalone tamias-driver-mcp binary fronts the
+# same ops without any feature. default = ops driver + `run`/`cli`
+# passthroughs only. `cli` is NOT a feature: it's the bins[] shim
+# passthrough (strip --dir/--name → cypera::run_from), not a
+# generated surface.
+default = []
+mcp = ["pavo-driver-kit/mcp"]
+
+[dependencies]
+cypera.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+# The public wire contract — git dep so `cargo install --git` and
+# `cargo xtask install` work without a sibling ../pavo checkout
+# (path deps break workspace resolution on a fresh clone).
+# `version` is the crates.io fallback once pavo-protocol publishes.
+pavo-protocol = { git = "https://github.com/9aia/pavo", version = "0.1.0" }
+# Driver-authoring kit — the ndjson `serve` loop plus the
+# manifest/ViewSpec/QueryBinding/ViewNode builders. Same git source
+# as pavo-protocol (they resolve to one rev); `version` is the
+# crates.io fallback once it publishes.
+pavo-driver-kit = { git = "https://github.com/9aia/pavo", version = "0.1.0" }
+
+[dev-dependencies]
+# Conformance gate — `cargo test` runs pavo's wire-contract suite
+# against this crate's own `tamias-driver-cypera serve` binary.
+# Git dep to match pavo-protocol above (path deps break
+# `cargo install --git` / fresh-clone resolution).
+pavo-testkit = { git = "https://github.com/9aia/pavo" }
+
+[lints]
+workspace = true

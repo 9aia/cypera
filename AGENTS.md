@@ -9,16 +9,21 @@ all three, once, for every repo — killing per-repo script drift.
 
 Rust workspace, ports-and-adapters-lite: `cypera-core` is pure
 domain (models + markdown renderers, **no I/O**); `cypera-cli` is
-the composition root — clap argv, filesystem walks, emit. Named
-for the *cypera*, the swift — docs that keep pace with the code.
+the composition root — clap argv, filesystem walks, emit.
+Distribution is a tamias pack (`libraries/cypera`): the `cypera`
+command ships as a generated `bins[]` shim over
+`tamias-driver-cypera`, like every other 9aia tool. Named for the
+*cypera*, the swift — docs that keep pace with the code.
 
 ## Layout
 
 | Crate | Role |
 | --- | --- |
 | `crates/cypera-core` | Pure domain — `Cargo.toml` manifest models (`manifest`), crate-map model + renderer + entry-file scanner (`crate_map`), config-struct doc-comment scanner + renderer (`config`), CLI help-walk parser/renderer (`cli`), the `cypera.toml` schema (`repo_config`). String in, markdown out; never touches `std::fs`/`std::process`. |
-| `crates/cypera-cli` | package `cypera` — the binary. `gen crate-map` (workspace walk, member-glob expansion, `src/lib.rs`/`main.rs` scan, `--layer` overrides, `--out` with marker splicing), `gen cli` (recursive `<bin> --help` walk, or `--input` wrap of `gen-cli-docs` markdown), `gen config` (`--file` scans, `--only` filter, or `cypera.toml` curated sections), `check` (the docs contract — README/AGENTS/Diátaxis/freshness, `--repo`, `--json`). All three gens discover `cypera.toml` upward from `--repo`/cwd. Engine lib exposes `parse_from`/`run_from` per org convention. |
-| `xtask` (`cypera-xtask`) | `check` (fmt + clippy -D warnings) / `test` (nextest or cargo test) / `coverage` (llvm-cov) / `fmt` |
+| `crates/cypera-cli` | package `cypera` — the binary + engine lib (`parse_from`/`run_from`/`command()` per org convention). `gen crate-map` (workspace walk, member-glob expansion, `src/lib.rs`/`main.rs` scan, `--layer` overrides, `--out` with marker splicing), `gen cli` (recursive `<bin> --help` walk, or `--input` wrap of `gen-cli-docs` markdown), `gen config` (`--file` scans, `--only` filter, or `cypera.toml` curated sections), `check` (the docs contract — README/AGENTS/Diátaxis/freshness, `--repo`, `--json`). All three gens discover `cypera.toml` upward from `--repo`/cwd. |
+| `crates/cypera-driver` | `tamias-driver-cypera` — pavo driver exposing the engine ops surface: every bounded `cypera` verb as a `cli.<verb>` wire query derived from `cypera::command()` (no views, no surfaces — every verb is bounded), `run <argv>` + `cli <argv>` passthroughs re-execing the engine in-process (`cli` is the `bins[]` shim verb — strips `--dir`/`--name`, inherited stdio), feature-gated `mcp` embedded surface. The shipped `cypera` command rides this driver via `libraries/cypera`. |
+| `libraries/cypera` | the tamias pack — `tamias.yaml` declares `bins: [{name: cypera, shim: cli, driver: cypera}]`; `cargo xtask pack` stages `drivers/bin/<triple>/tamias-driver-cypera` (gitignored) |
+| `xtask` (`cypera-xtask`) | `check` (fmt + clippy -D warnings) / `test` (nextest or cargo test) / `coverage` (llvm-cov) / `pack` (stage the pack payload) / `install` (release driver → `~/.local/bin`) / `fmt` |
 
 ## Commands
 
@@ -26,6 +31,13 @@ for the *cypera*, the swift — docs that keep pace with the code.
 cargo xtask check          # fmt --check + clippy -D warnings
 cargo xtask test           # whole suite (nextest if present)
 cargo xtask coverage       # llvm-cov summary; extra args pass through
+cargo xtask pack           # stage libraries/cypera driver payload
+                           # (release tamias-driver-cypera → drivers/bin/<triple>/)
+cargo xtask install        # release-build tamias-driver-cypera →
+                           # ~/.local/bin; the `cypera` command itself
+                           # is the tamias pack's generated bins[] shim —
+                           # `cargo xtask pack` + `tamias install
+                           # --allow-drivers ./libraries/cypera`
 cargo xtask fmt            # cargo fmt --all
 ```
 

@@ -8,6 +8,7 @@
 out = "docs/reference/crate-map.md"
 
 [crate_map.layers]
+"cypera-driver" = "driver"
 "cypera-xtask" = "tooling"
 
 [[crate_map.splices]]

@@ -11,27 +11,25 @@ export default defineConfig({
   ],
   themeConfig: {
     nav: [
-      { text: "Guide", link: "/getting-started" },
+      { text: "Tutorials", link: "/tutorials/getting-started" },
+      { text: "How-to", link: "/how-to/" },
+      { text: "Explanation", link: "/explanation/" },
       { text: "Reference", link: "/reference/commands" },
       { text: "GitHub", link: "https://github.com/9aia/cypera" },
     ],
     sidebar: [
       {
         text: "Start",
-        items: [
-          { text: "Introduction", link: "/" },
-          { text: "Getting started", link: "/getting-started" },
-        ],
+        items: [{ text: "Introduction", link: "/" }],
       },
       {
         text: "Tutorials",
-        items: [
-          { text: "Generate a crate map", link: "/tutorials/crate-map" },
-        ],
+        items: [{ text: "Getting started", link: "/tutorials/getting-started" }],
       },
       {
         text: "How-to",
         items: [
+          { text: "Generate a crate map", link: "/how-to/generate-a-crate-map" },
           { text: "Regenerate the CLI reference", link: "/how-to/cli-reference" },
           { text: "Regenerate the config reference", link: "/how-to/config-reference" },
           { text: "Check the docs contract", link: "/how-to/check-docs" },
@@ -47,7 +45,12 @@ export default defineConfig({
       },
       {
         text: "Explanation",
-        items: [{ text: "Architecture", link: "/explanation/architecture" }],
+        items: [
+          { text: "Architecture", link: "/explanation/architecture" },
+          { text: "Concepts", link: "/explanation/concepts" },
+          { text: "Boundaries", link: "/explanation/boundaries" },
+          { text: "Decisions", link: "/explanation/decisions" },
+        ],
       },
     ],
     socialLinks: [{ icon: "github", link: "https://github.com/9aia/cypera" }],

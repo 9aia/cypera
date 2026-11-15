@@ -54,3 +54,20 @@ Sibling repos keep generated pages on their `docs` branch (the
 - Tables embedded in prose → leave a `<!-- crate-map -->` marker in
   the host page and pass it as `--out`; cypera replaces only the
   table rows after the marker (the `gen-crate-map.py` convention).
+
+## What you now know
+
+- The three generators (`crate-map`, `cli`, `config`) plus `api`
+  and `check`, and where each reads its truth from.
+- `--out` writes pages wholesale; a `<!-- crate-map -->` marker
+  splices tables into prose.
+- `cypera.toml` is where per-repo hard-coding belongs.
+
+## Go deeper
+
+- [Generate a crate map](../how-to/generate-a-crate-map.md) — the
+  full walk: globs, layers, splices.
+- [Check the docs contract](../how-to/check-docs.md) — the rules
+  `cypera check` enforces.
+- [Architecture](../explanation/architecture.md) — why core is
+  pure and the shell owns I/O.

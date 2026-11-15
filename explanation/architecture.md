@@ -45,10 +45,24 @@ full generated page.
 
 ## What cypera deliberately doesn't do
 
-- **No rustdoc pipeline** — `cargo doc` API pages stay with the
-  per-repo `gen-api.py` scripts.
 - **No upward repo discovery** — `--repo` is explicit so scripts
   and CI stay deterministic.
-- **No clap parsing** — `gen cli` wraps `gen-cli-docs` output;
-  the producer owns the command tree.
+- **No rustdoc internals** — `gen api` orchestrates `cargo doc`
+  and copies `<target>/doc` verbatim; it does not parse rustdoc
+  JSON. `crate_api` config only emits the rustdoc *link list*.
 - **No async, no daemon** — sync binary, scoped like its siblings.
+
+See [Boundaries](boundaries.md) for what cypera owns and the
+neighbors it deliberately doesn't.
+
+## Where it sits
+
+In the org's layering — **tamias** (package & content manager) →
+**engines** (myco, kuda, mimus, sepia, sturn, hypha, tarsi,
+cicada, scarab, peregrin) → **orchestration** (peregrin) →
+**surfaces** (pavo, docs sites).
+
+Cypera sits *under* the surfaces: every engine's docs site
+regenerates its reference pages through cypera, and `cypera check`
+is the gate that keeps the org's docs contract honest. It is a
+library-grade tool consumed by repos, not an engine the org runs.

@@ -107,14 +107,16 @@ appear; `Option<T>` and a literal `serde(default` attribute mark a
 field optional and unwrap the inner type; notes escape `|`, `<`,
 `>`.
 
-## `[check]` — `cypera check` exemptions
+## `[check]` — `cypera check` profile + exemptions
 
 | key | type | meaning |
 | --- | --- | --- |
-| `skip` | string list | `cypera check` rule names reported `SKIP` (exempt) instead of their computed status — for repos where a rule doesn't apply by design (content-only ledger mounts, theme packages, the website repo). Rules: `readme`, `agents-md`, `no-changelog`, `no-version-in-prose`, `docs-site`, `docs-check-script`, `generated-fresh`. Unknown names warn on stderr and are ignored — a typo never fails the run. |
+| `profile` | string | Docs-content profile — `engine`, `library`, or `content`. Drives the content rules (`content-pages`, `tutorial-count`, `index-router`, `no-orphan-getting-started`). `engine` requires the full Diátaxis tree (all four quadrant dirs, ≥1 tutorial, ≥3 how-tos, and `explanation/{architecture,concepts,boundaries,decisions}.md`); `library` requires only `index.md` + `explanation/{architecture,concepts}.md`; `content` exempts narrative/site/ledger repos from the quadrant bar. Absent or unknown values warn on stderr and fall back to `engine`. All four rules SKIP when the `docs/` worktree isn't checked out, and when no `cypera.toml` exists at all. |
+| `skip` | string list | `cypera check` rule names reported `SKIP` (exempt) instead of their computed status — for repos where a rule doesn't apply by design (content-only ledger mounts, theme packages, the website repo). Rules: `readme`, `agents-md`, `no-changelog`, `no-version-in-prose`, `docs-site`, `docs-check-script`, `generated-fresh`, `content-pages`, `tutorial-count`, `index-router`, `no-orphan-getting-started`. Unknown names warn on stderr and are ignored — a typo never fails the run. |
 
 ```toml
 [check]
+profile = "engine"
 skip = ["docs-site", "docs-check-script"]
 ```
 

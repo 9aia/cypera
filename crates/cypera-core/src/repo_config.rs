@@ -159,6 +159,14 @@ pub struct CliConfig {
     /// to stdout or `--out`.
     #[serde(default)]
     pub out: Option<String>,
+    /// Subcommand paths to leave out of the `--help` walk — space-
+    /// joined paths below the program name (`["driver exec"]`). For
+    /// passthrough surfaces whose clap command disables its own
+    /// `--help` flag (`disable_help_flag`) so a verb's `--help`
+    /// reaches the wrapped engine instead. The parent page still
+    /// lists the subcommand; only its node is skipped.
+    #[serde(default)]
+    pub skip: Vec<String>,
 }
 
 /// `[config]` — the config-reference page spec. Absorbs the

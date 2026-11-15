@@ -127,6 +127,10 @@ pub enum Gen {
         /// the python scripts' `Command-Line Help for …` header).
         #[arg(long)]
         title: Option<String>,
+        /// Subcommand path to skip in the `--help` walk, space-
+        /// joined (`driver exec`; repeatable; `[cli].skip` fallback).
+        #[arg(long = "skip")]
+        skips: Vec<String>,
         /// Write to this file instead of stdout
         /// (`[cli].out` fallback, then stdout).
         #[arg(long)]
@@ -215,6 +219,7 @@ fn run_gen(gen: Gen) -> Result<i32> {
             bin,
             prefixes,
             title,
+            skips,
             out,
         } => gen_cli(
             &repo,
@@ -225,6 +230,7 @@ fn run_gen(gen: Gen) -> Result<i32> {
                 bin: bin.as_deref(),
                 prefixes: &prefixes,
                 title: title.as_deref(),
+                skips: &skips,
                 out: out.as_deref(),
             },
         ),
@@ -552,6 +558,7 @@ struct CliOpts<'a> {
     bin: Option<&'a str>,
     prefixes: &'a [String],
     title: Option<&'a str>,
+    skips: &'a [String],
     out: Option<&'a Path>,
 }
 
@@ -562,6 +569,7 @@ fn gen_cli(repo: &Path, config: Option<&Path>, opts: CliOpts<'_>) -> Result<i32>
         bin,
         prefixes,
         title,
+        skips,
         out,
     } = opts;
     // Wrap mode — `gen-cli-docs` markdown in a page.
@@ -578,7 +586,7 @@ fn gen_cli(repo: &Path, config: Option<&Path>, opts: CliOpts<'_>) -> Result<i32>
     let discovered = discover_config(repo, config)?;
     let file_cfg = discovered.as_ref().and_then(|(_, c)| c.cli.clone());
     // Flag > `[cli]` config > error.
-    let spec = resolve_cli_spec(file_cfg.as_ref(), package, bin, prefixes)?;
+    let spec = resolve_cli_spec(file_cfg.as_ref(), package, bin, prefixes, skips)?;
     let title = title
         .map(str::to_string)
         .or_else(|| file_cfg.as_ref().and_then(|c| c.title.clone()));
@@ -604,6 +612,7 @@ fn resolve_cli_spec(
     package: Option<&str>,
     bin: Option<&str>,
     prefixes: &[String],
+    skips: &[String],
 ) -> Result<CliConfig> {
     let mut spec = file_cfg.cloned().unwrap_or(CliConfig {
         package: None,
@@ -611,6 +620,7 @@ fn resolve_cli_spec(
         prefix: Vec::new(),
         title: None,
         out: None,
+        skip: Vec::new(),
     });
     if let Some(p) = package {
         spec.package = Some(p.to_string());
@@ -620,6 +630,9 @@ fn resolve_cli_spec(
     }
     if !prefixes.is_empty() {
         spec.prefix = prefixes.to_vec();
+    }
+    if !skips.is_empty() {
+        spec.skip = skips.to_vec();
     }
     if spec.bin.is_empty() {
         bail!("gen cli: no `bin` — pass --bin or set `[cli].bin` in cypera.toml");
@@ -679,6 +692,15 @@ fn cli_help_page(root: &Path, spec: &CliConfig) -> Result<String> {
         seen: &mut HashSet<Vec<String>>,
     ) -> Result<()> {
         if !seen.insert(path.clone()) {
+            return Ok(());
+        }
+        // `[cli].skip` — passthrough surfaces (`disable_help_flag`)
+        // have no `--help` to walk; the parent still lists them.
+        if spec
+            .skip
+            .iter()
+            .any(|s| s.split_whitespace().eq(path.iter().map(String::as_str)))
+        {
             return Ok(());
         }
         let text = help_text(root, bin, spec, &path)?;

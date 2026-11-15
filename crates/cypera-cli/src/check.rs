@@ -528,7 +528,7 @@ fn freshness_rule(root: &Path, base: &Path, cfg: Option<&RepoConfig>) -> Result<
     if let Some(cli) = &rc.cli {
         if let Some(out_rel) = &cli.out {
             checked += 1;
-            match resolve_cli_spec(Some(cli), None, None, &[]) {
+            match resolve_cli_spec(Some(cli), None, None, &[], &[]) {
                 Ok(spec) => match cli_help_page(root, &spec) {
                     Ok(page) => {
                         let target = resolve_path(root, base, out_rel);

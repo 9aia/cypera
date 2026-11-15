@@ -54,7 +54,8 @@
 //! prefix = "myco"              #   index filter + title base
 //! target_dir = "target/docs-api"  # CARGO_TARGET_DIR when unset
 //!
-//! [check]                      # cypera check — rule exemptions
+//! [check]                      # cypera check — profile + exemptions
+//! profile = "engine"           #   engine | library | content
 //! skip = ["docs-site", "docs-check-script"]
 //! ```
 //!
@@ -94,13 +95,26 @@ pub struct RepoConfig {
 /// `cypera-cli/src/check.rs`.
 pub const CHECK_RULE_NAMES: &[&str] = &[
     "agents-md",
+    "content-pages",
     "docs-check-script",
     "docs-site",
     "generated-fresh",
+    "index-router",
     "no-changelog",
+    "no-orphan-getting-started",
     "no-version-in-prose",
     "readme",
+    "tutorial-count",
 ];
+
+/// The docs-content profiles `[check] profile` accepts — the
+/// per-repo bar `cypera check`'s content rules enforce. `engine`
+/// is the full Diátaxis contract (tutorial + how-to + the
+/// explanation set + generated reference); `library` is the
+/// minimal bar (index + architecture + concepts); `content` is
+/// for narrative/site/ledger repos exempt from the quadrant
+/// requirements. Unknown values warn and fall back to `engine`.
+pub const CHECK_PROFILES: &[&str] = &["content", "engine", "library"];
 
 /// `[check]` — exemptions for `cypera check`. Rules named in
 /// `skip` are still evaluated but reported `SKIP` (exempt) instead
@@ -116,6 +130,13 @@ pub struct CheckConfig {
     /// run), so this list is deliberately not validated at parse.
     #[serde(default)]
     pub skip: Vec<String>,
+    /// Docs-content profile — one of [`CHECK_PROFILES`]
+    /// (`engine`/`library`/`content`). Drives the content rules
+    /// (`content-pages`, `tutorial-count`, `index-router`,
+    /// `no-orphan-getting-started`). Unknown values warn and
+    /// fall back to `engine`; absent means `engine`.
+    #[serde(default)]
+    pub profile: Option<String>,
 }
 
 /// `[crate_map]` — absorbs the per-repo `LAYER`/`ORDER`/`SITE`
@@ -463,15 +484,19 @@ skip = ["docs-site", "docs-check-script"]
 "#;
         let cfg = RepoConfig::parse("cypera.toml", text).unwrap();
         assert_eq!(cfg.check.skip, ["docs-site", "docs-check-script"]);
+        assert_eq!(cfg.check.profile, None);
         // Unknown names parse fine — `cypera check` warns and
         // ignores them rather than failing the whole config load.
         let text = r#"
 [check]
 skip = ["not-a-rule"]
+profile = "engine"
 "#;
         let cfg = RepoConfig::parse("cypera.toml", text).unwrap();
         assert_eq!(cfg.check.skip, ["not-a-rule"]);
         assert!(!CHECK_RULE_NAMES.contains(&"not-a-rule"));
+        assert_eq!(cfg.check.profile.as_deref(), Some("engine"));
+        assert!(CHECK_PROFILES.contains(&"engine"));
     }
 
     #[test]

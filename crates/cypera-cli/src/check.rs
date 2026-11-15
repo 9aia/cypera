@@ -2,7 +2,8 @@
 //! reports pass/fail(/skip) with `file:line` evidence; any fail
 //! exits non-zero. `--json` emits the report as JSON.
 
-use std::path::Path;
+use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde_json::{json, Value};
@@ -54,6 +55,50 @@ impl Rule {
     }
 }
 
+/// The docs-content profile `[check] profile` selects — the bar
+/// the content rules enforce. Mirrors `CHECK_PROFILES` in
+/// cypera-core; unknown/absent values resolve to `Engine`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Profile {
+    Engine,
+    Library,
+    Content,
+}
+
+impl Profile {
+    fn as_str(self) -> &'static str {
+        match self {
+            Profile::Engine => "engine",
+            Profile::Library => "library",
+            Profile::Content => "content",
+        }
+    }
+}
+
+/// Resolve `[check] profile` — unknown names warn (same
+/// tolerance as `[check] skip`) and fall back to `engine`.
+fn profile_of(rc: &RepoConfig) -> Profile {
+    match rc.check.profile.as_deref() {
+        Some("engine") => Profile::Engine,
+        Some("library") => Profile::Library,
+        Some("content") => Profile::Content,
+        Some(other) => {
+            eprintln!("cypera check: warning: unknown [check] profile `{other}` — using `engine`");
+            Profile::Engine
+        }
+        None => Profile::Engine,
+    }
+}
+
+/// Rule names for repos without `cypera.toml` — no declared
+/// profile means the content rules can't be evaluated.
+const CONTENT_RULE_NAMES: &[&str] = &[
+    "content-pages",
+    "index-router",
+    "no-orphan-getting-started",
+    "tutorial-count",
+];
+
 /// Entry point from `run()`.
 pub fn run_check(repo: &Path, config: Option<&Path>, json_out: bool) -> Result<i32> {
     let root = repo
@@ -72,6 +117,26 @@ pub fn run_check(repo: &Path, config: Option<&Path>, json_out: bool) -> Result<i
         freshness_rule(&root, &base, cfg)?,
         docs_check_script_rule(&root),
     ];
+    // Docs-content rules — driven by `[check] profile`. Without a
+    // cypera.toml there is no declared profile, so they report
+    // SKIP (same posture as `generated-fresh`).
+    match cfg {
+        Some(rc) => {
+            let profile = profile_of(rc);
+            rules.push(content_pages_rule(&root, profile));
+            rules.push(tutorial_count_rule(&root, profile));
+            rules.push(index_router_rule(&root, profile));
+            rules.push(no_orphan_getting_started_rule(&root, profile));
+        }
+        None => {
+            for name in CONTENT_RULE_NAMES {
+                rules.push(Rule::skip(
+                    name,
+                    vec!["no cypera.toml — [check] profile not declared".into()],
+                ));
+            }
+        }
+    }
     // Deterministic order regardless of construction.
     rules.sort_by_key(|r| r.name);
 
@@ -639,6 +704,319 @@ fn docs_site_rule(root: &Path) -> Rule {
     }
 }
 
+// ---------- rules: docs content system ----------
+//
+// The mechanical half of the workspace "Docs content system"
+// contract — required pages per `[check] profile`, the golden-path
+// tutorial count, the index router, and docs-root hygiene. All
+// four SKIP (not FAIL) when the `docs/` worktree is absent — the
+// `docs-site` rule owns the missing-worktree failure, and a repo
+// mid-migration shouldn't be double-reported. `content` profile
+// repos (site/ledger/narrative) are exempt from the quadrant bar.
+
+/// `docs/` when the VitePress worktree is checked out.
+fn docs_root(root: &Path) -> Option<PathBuf> {
+    let d = root.join("docs");
+    d.is_dir().then_some(d)
+}
+
+/// The four Diátaxis quadrant dir names — canonical spellings
+/// only (the `docs-site` rule owns synonym tolerance).
+const QUADRANTS: &[&str] = &["tutorials", "how-to", "explanation", "reference"];
+
+/// Count `.md` files under `dir`, recursively (VitePress pages
+/// may nest). Missing dir counts as 0.
+fn count_markdown(dir: &Path) -> usize {
+    let mut n = 0usize;
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.extension().and_then(|x| x.to_str()) == Some("md") {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+/// Record any quadrant dir name appearing as a `/`-separated
+/// path segment of a link target.
+fn note_link_target(target: &str, found: &mut BTreeSet<&'static str>) {
+    let target = target.split(['?', '#']).next().unwrap_or(target);
+    for seg in target.split('/') {
+        let seg = seg.trim();
+        if let Some(q) = QUADRANTS.iter().find(|q| **q == seg) {
+            found.insert(*q);
+        }
+    }
+}
+
+/// Quadrant dirs linked from a page — markdown `](target)` links
+/// plus raw-HTML `href="…"`/`href='…"` attributes (VitePress
+/// markdown allows inline HTML).
+fn quadrant_links(text: &str) -> BTreeSet<&'static str> {
+    let mut found = BTreeSet::new();
+    let b = text.as_bytes();
+    let mut i = 0usize;
+    while i + 1 < b.len() {
+        if b[i] == b']' && b[i + 1] == b'(' {
+            let start = i + 2;
+            let mut j = start;
+            while j < b.len() && b[j] != b')' {
+                j += 1;
+            }
+            if j < b.len() {
+                note_link_target(&text[start..j], &mut found);
+            }
+            i = j + 1;
+            continue;
+        }
+        if b[i..].starts_with(b"href") {
+            let mut j = i + 4;
+            while j < b.len() && b[j].is_ascii_whitespace() {
+                j += 1;
+            }
+            if j < b.len() && b[j] == b'=' {
+                j += 1;
+                while j < b.len() && b[j].is_ascii_whitespace() {
+                    j += 1;
+                }
+                if j < b.len() && (b[j] == b'"' || b[j] == b'\'') {
+                    let quote = b[j];
+                    j += 1;
+                    let start = j;
+                    while j < b.len() && b[j] != quote {
+                        j += 1;
+                    }
+                    note_link_target(&text[start..j], &mut found);
+                    i = j + 1;
+                    continue;
+                }
+            }
+        }
+        i += 1;
+    }
+    found
+}
+
+/// `content-pages` — the required docs tree per profile.
+/// Engine: all four quadrant dirs, ≥1 tutorial, ≥3 how-tos, and
+/// the explanation set (architecture/concepts/boundaries/decisions;
+/// flow/security optional). Library: index + architecture +
+/// concepts only. Content: exempt.
+fn content_pages_rule(root: &Path, profile: Profile) -> Rule {
+    const NAME: &str = "content-pages";
+    if profile == Profile::Content {
+        return Rule::skip(
+            NAME,
+            vec![format!(
+                "profile `{}` — quadrant bar exempt",
+                profile.as_str()
+            )],
+        );
+    }
+    let Some(docs) = docs_root(root) else {
+        return Rule::skip(
+            NAME,
+            vec!["docs/: missing — VitePress worktree not checked out".into()],
+        );
+    };
+    let mut evidence = Vec::new();
+    let mut missing = Vec::new();
+    match profile {
+        Profile::Engine => {
+            for q in QUADRANTS {
+                let dir = docs.join(q);
+                if dir.is_dir() {
+                    evidence.push(format!("docs/{q}/: present"));
+                } else {
+                    missing.push(format!("docs/{q}/: missing"));
+                }
+            }
+            let tutorials = docs.join("tutorials");
+            if tutorials.is_dir() {
+                let n = count_markdown(&tutorials);
+                evidence.push(format!("docs/tutorials/: {n} markdown files"));
+                if n < 1 {
+                    missing.push("docs/tutorials/: needs >=1 markdown file".into());
+                }
+            }
+            let how_to = docs.join("how-to");
+            if how_to.is_dir() {
+                let n = count_markdown(&how_to);
+                evidence.push(format!("docs/how-to/: {n} markdown files"));
+                if n < 3 {
+                    missing.push("docs/how-to/: needs >=3 markdown files".into());
+                }
+            }
+            let expl = docs.join("explanation");
+            for f in [
+                "architecture.md",
+                "concepts.md",
+                "boundaries.md",
+                "decisions.md",
+            ] {
+                if expl.join(f).is_file() {
+                    evidence.push(format!("docs/explanation/{f}: present"));
+                } else {
+                    missing.push(format!("docs/explanation/{f}: missing"));
+                }
+            }
+            for f in ["flow.md", "security.md"] {
+                if expl.join(f).is_file() {
+                    evidence.push(format!("docs/explanation/{f}: present (optional)"));
+                }
+            }
+        }
+        Profile::Library => {
+            for p in [
+                "index.md",
+                "explanation/architecture.md",
+                "explanation/concepts.md",
+            ] {
+                if docs.join(p).is_file() {
+                    evidence.push(format!("docs/{p}: present"));
+                } else {
+                    missing.push(format!("docs/{p}: missing"));
+                }
+            }
+        }
+        Profile::Content => unreachable!("content profile returned early"),
+    }
+    if missing.is_empty() {
+        Rule::pass(NAME, evidence)
+    } else {
+        evidence.extend(missing);
+        Rule::fail(NAME, evidence)
+    }
+}
+
+/// `tutorial-count` — the golden path is one tutorial; `tutorials/`
+/// holds at most 2 markdown files (a second demotes to how-to).
+/// Applies to engine + library profiles; content exempt.
+fn tutorial_count_rule(root: &Path, profile: Profile) -> Rule {
+    const NAME: &str = "tutorial-count";
+    if profile == Profile::Content {
+        return Rule::skip(
+            NAME,
+            vec![format!(
+                "profile `{}` — quadrant bar exempt",
+                profile.as_str()
+            )],
+        );
+    }
+    let Some(docs) = docs_root(root) else {
+        return Rule::skip(
+            NAME,
+            vec!["docs/: missing — VitePress worktree not checked out".into()],
+        );
+    };
+    let dir = docs.join("tutorials");
+    if !dir.is_dir() {
+        return Rule::skip(
+            NAME,
+            vec!["docs/tutorials/: absent — nothing to count".into()],
+        );
+    }
+    let n = count_markdown(&dir);
+    let evidence = vec![format!("docs/tutorials/: {n} markdown files")];
+    if n <= 2 {
+        Rule::pass(NAME, evidence)
+    } else {
+        let mut evidence = evidence;
+        evidence.push("golden path = one tutorial — demote extras to docs/how-to/".into());
+        Rule::fail(NAME, evidence)
+    }
+}
+
+/// `index-router` — `docs/index.md` exists and links to at least
+/// 3 of the 4 quadrant dirs, so the landing page routes each
+/// reader journey. Applies to engine + library profiles.
+fn index_router_rule(root: &Path, profile: Profile) -> Rule {
+    const NAME: &str = "index-router";
+    if profile == Profile::Content {
+        return Rule::skip(
+            NAME,
+            vec![format!(
+                "profile `{}` — quadrant bar exempt",
+                profile.as_str()
+            )],
+        );
+    }
+    let Some(docs) = docs_root(root) else {
+        return Rule::skip(
+            NAME,
+            vec!["docs/: missing — VitePress worktree not checked out".into()],
+        );
+    };
+    let index = docs.join("index.md");
+    let Ok(text) = std::fs::read_to_string(&index) else {
+        return Rule::fail(NAME, vec!["docs/index.md: missing".into()]);
+    };
+    let links = quadrant_links(&text);
+    let names: Vec<&str> = links.iter().copied().collect();
+    let mut evidence = vec![format!("docs/index.md: quadrant links {names:?}")];
+    if links.len() >= 3 {
+        Rule::pass(NAME, evidence)
+    } else {
+        evidence.push(
+            "docs/index.md: links to <3 of tutorials/how-to/explanation/reference — \
+             the index must route each reader journey"
+                .into(),
+        );
+        Rule::fail(NAME, evidence)
+    }
+}
+
+/// `no-orphan-getting-started` — no `getting-started.md` at the
+/// `docs/` root; the golden path lives in `docs/tutorials/`.
+/// Applies to engine + library profiles.
+fn no_orphan_getting_started_rule(root: &Path, profile: Profile) -> Rule {
+    const NAME: &str = "no-orphan-getting-started";
+    if profile == Profile::Content {
+        return Rule::skip(
+            NAME,
+            vec![format!(
+                "profile `{}` — quadrant bar exempt",
+                profile.as_str()
+            )],
+        );
+    }
+    let Some(docs) = docs_root(root) else {
+        return Rule::skip(
+            NAME,
+            vec!["docs/: missing — VitePress worktree not checked out".into()],
+        );
+    };
+    let mut hits = Vec::new();
+    if let Ok(rd) = std::fs::read_dir(&docs) {
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_file()
+                && e.file_name()
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case("getting-started.md")
+            {
+                hits.push(format!(
+                    "{}: orphan — belongs in docs/tutorials/",
+                    p.display()
+                ));
+            }
+        }
+    }
+    if hits.is_empty() {
+        Rule::pass(NAME, vec!["no getting-started.md at docs/ root".into()])
+    } else {
+        Rule::fail(NAME, hits)
+    }
+}
+
 // ---------- rule: generated references are fresh ----------
 
 /// Regenerate every output `cypera.toml` declares (crate-map
@@ -851,5 +1229,29 @@ mod tests {
     fn prose_version_still_flags() {
         let line = "Ships with 9.9.9 next week";
         assert_eq!(find_versions(&mask_inline_code(line)), vec!["9.9.9"]);
+    }
+
+    #[test]
+    fn quadrant_links_markdown_and_html() {
+        let text = "# Home\n\n- [Learn](./tutorials/start.md)\n\
+                    - [Tasks](how-to/import.md)\n\
+                    - [Why](explanation/architecture.md#top)\n\
+                    - <a href=\"/reference/cli.html\">CLI</a>\n\
+                    - [Anchor](#explanation) not a dir link\n";
+        let links = quadrant_links(text);
+        assert_eq!(links.len(), 4);
+        assert!(links.contains("tutorials"));
+        assert!(links.contains("how-to"));
+        assert!(links.contains("explanation"));
+        assert!(links.contains("reference"));
+    }
+
+    #[test]
+    fn quadrant_links_requires_path_segment() {
+        // `my-how-to.md` and `#how-to` anchors must not count.
+        let text = "[x](my-how-to.md) [y](#how-to) [z](tutorials)";
+        let links = quadrant_links(text);
+        assert_eq!(links.len(), 1);
+        assert!(links.contains("tutorials"));
     }
 }

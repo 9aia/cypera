@@ -14,3 +14,6 @@ out = "docs/reference/crate-map.md"
 [[crate_map.splices]]
 target = "docs/explanation/architecture.md"
 marker = "<!-- crate-map -->"
+
+[check]
+profile = "engine"

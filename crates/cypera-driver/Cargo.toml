@@ -39,6 +39,9 @@ pavo-protocol = { git = "https://github.com/9aia/pavo", version = "0.1.0" }
 pavo-driver-kit = { git = "https://github.com/9aia/pavo", version = "0.1.0" }
 
 [dev-dependencies]
+# Fixture repos for the e2e passthrough tests — the real repo's
+# `docs/` worktree is absent in detached gate worktrees.
+tempfile = "3"
 # Conformance gate — `cargo test` runs pavo's wire-contract suite
 # against this crate's own `tamias-driver-cypera serve` binary.
 # Git dep to match pavo-protocol above (path deps break

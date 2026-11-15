@@ -7,7 +7,7 @@
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview",
     "docs:deploy": "bun run docs:build && bunx gh-pages -d .vitepress/dist",
-    "docs:check": "cargo run -q -p cypera -- check --repo .."
+    "docs:check": "cypera check --repo .."
   },
   "devDependencies": {
     "vitepress": "^1.6.3",

@@ -30,7 +30,7 @@ api:
 - name: emit
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 317
+  line: 329
   module: cypera
 - name: expand_members
   kind: function
@@ -40,12 +40,12 @@ api:
 - name: gen_cli
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 279
+  line: 291
   module: cypera
 - name: gen_config
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 292
+  line: 304
   module: cypera
 - name: gen_crate_map
   kind: function
@@ -111,8 +111,8 @@ provenance:
   hashes:
   - ae84f2606c2a6b6f2d9e325f64fa54e8fb653c32
   - a9c4e15443f79653bca7daae890603e7df94a6f6
-  - 7e64a5f84a4c527005f09a433649ce74d12e817a
+  - a5951c6bf80a9b5eb898a66ad96c02b6d7bee455
   - fa7b5ea5bde09bd04d92ae1b63028ec43cd30f9d
-  commit_sha: 95b9d820bbd7d0795e57e1aad81c7b5460e898f3
-  generated_at: '1794725248'
+  commit_sha: cf22987efb8bae518e7a6ccfca4d97f0125faee4
+  generated_at: '1794727162'
   generator: kuda-template/0.1.4

@@ -1,0 +1,78 @@
+name: docs
+path: docs/package.json
+purpose: documentation corpus — pages as records, backticked refs as edges
+api:
+- name: Architecture
+  kind: record
+  file: docs/explanation/architecture.md
+  line: 1
+  module: docs
+- name: Commands
+  kind: record
+  file: docs/reference/commands.md
+  line: 1
+  module: docs
+- name: Crate map — `cypera`
+  kind: record
+  file: docs/reference/crate-map.md
+  line: 1
+  module: docs
+- name: Generate a crate map
+  kind: record
+  file: docs/tutorials/crate-map.md
+  line: 1
+  module: docs
+- name: Getting started
+  kind: record
+  file: docs/getting-started.md
+  line: 1
+  module: docs
+- name: Regenerate the CLI reference
+  kind: record
+  file: docs/how-to/cli-reference.md
+  line: 1
+  module: docs
+- name: Regenerate the config reference
+  kind: record
+  file: docs/how-to/config-reference.md
+  line: 1
+  module: docs
+deps: []
+notes: ''
+verify:
+- docs/.vitepress/config.ts
+- docs/explanation/architecture.md
+- docs/getting-started.md
+- docs/how-to/cli-reference.md
+- docs/how-to/config-reference.md
+- docs/index.md
+- docs/package.json
+- docs/reference/commands.md
+- docs/reference/crate-map.md
+- docs/tutorials/crate-map.md
+provenance:
+  files:
+  - docs/.vitepress/config.ts
+  - docs/explanation/architecture.md
+  - docs/getting-started.md
+  - docs/how-to/cli-reference.md
+  - docs/how-to/config-reference.md
+  - docs/index.md
+  - docs/package.json
+  - docs/reference/commands.md
+  - docs/reference/crate-map.md
+  - docs/tutorials/crate-map.md
+  hashes:
+  - 1c9bf131113c1da27d2ea0afa0fd0ae865c4307a
+  - 4608510286eaae7370512ace8baee2bc67d4f316
+  - c302dfc7830835dcac0baf0310d88a7e81322fbd
+  - 1c5de933acdc7329b115a1d0052c7e951f8e8bb4
+  - 199d082490ef0c29c53a1ca9feb1e8678d732f9c
+  - 753c0f7bf3cd3b52955c8ce22dce658dced7d8c8
+  - bf789c552298d851303f53dd1177ae12b1e1da41
+  - 781d05434f396120b2fd7b9dd77f77ddf1ec719e
+  - 745c7f2597b75fa81dfaefe4c832be4ca6426312
+  - 5d66496a7a7fc933ab71f361e751b346316c8909
+  commit_sha: cf22987efb8bae518e7a6ccfca4d97f0125faee4
+  generated_at: '1794727162'
+  generator: kuda-template/0.1.4

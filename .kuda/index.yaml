@@ -5,12 +5,14 @@ modules:
 - cypera
 - cypera-core
 - cypera-xtask
+- docs
 - project
+- sturn-wal
 commands:
 - cargo check
 - cargo test --workspace
-tree_digest: 86dfdad38961bab93816f98255fff984e25e14ec
-files_total: 17
+tree_digest: b897e1ed3a73c71aeed140471ae6e07040cceaf7
+files_total: 28
 provenance:
   files:
   - Cargo.toml
@@ -24,6 +26,6 @@ provenance:
   - a9c4e15443f79653bca7daae890603e7df94a6f6
   - 0fdc762e1ea7c1110d7a6cb821eecc15ce6007d4
   - 2b734b480600780580fedb9450c7ad393f7c2e03
-  commit_sha: 95b9d820bbd7d0795e57e1aad81c7b5460e898f3
-  generated_at: '1794725248'
+  commit_sha: cf22987efb8bae518e7a6ccfca4d97f0125faee4
+  generated_at: '1794727162'
   generator: kuda/0.1.0

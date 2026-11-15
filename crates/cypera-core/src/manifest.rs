@@ -112,6 +112,17 @@ impl CrateManifest {
             .and_then(toml::Value::as_str)
             .unwrap_or("")
     }
+
+    /// `true` when `description` is the `{ workspace = true }`
+    /// inheritance form (`description.workspace = true` in TOML) —
+    /// the crate opts into `[workspace.package] description`.
+    pub fn description_inherited(&self) -> bool {
+        self.package
+            .description
+            .as_ref()
+            .and_then(toml::Value::as_table)
+            .is_some_and(|t| t.get("workspace").and_then(toml::Value::as_bool) == Some(true))
+    }
 }
 
 #[cfg(test)]

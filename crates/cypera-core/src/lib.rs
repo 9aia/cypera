@@ -24,8 +24,8 @@ pub mod manifest;
 pub use cli::render_cli_page;
 pub use config::{render_config_page, scan_config_structs, ConfigField, ConfigStruct};
 pub use crate_map::{
-    crate_map_from_workspace, crate_map_table, render_crate_map, scan_entry_source, CrateEntry,
-    CrateMap, EntryScan,
+    crate_map_from_workspace, crate_map_table, purpose_from_entry_doc, render_crate_map,
+    scan_entry_source, CrateEntry, CrateMap, EntryScan,
 };
 pub use error::CyperaError;
 pub use manifest::{CrateManifest, WorkspaceManifest};

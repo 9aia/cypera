@@ -65,7 +65,7 @@ api:
 - name: bare_package_has_no_members
   kind: function
   file: crates/cypera-core/src/manifest.rs
-  line: 133
+  line: 144
   module: cypera-core
 - name: cell
   kind: function
@@ -75,7 +75,7 @@ api:
 - name: cell
   kind: function
   file: crates/cypera-core/src/crate_map.rs
-  line: 178
+  line: 190
   module: cypera-core
 - name: clean_decl
   kind: function
@@ -95,7 +95,7 @@ api:
 - name: crate_manifest_reads_name_and_description
   kind: function
   file: crates/cypera-core/src/manifest.rs
-  line: 139
+  line: 150
   module: cypera-core
 - name: crate_map
   kind: module
@@ -110,12 +110,12 @@ api:
 - name: crate_map_sorts_domain_first
   kind: function
   file: crates/cypera-core/src/crate_map.rs
-  line: 273
+  line: 356
   module: cypera-core
 - name: crate_map_table
   kind: function
   file: crates/cypera-core/src/crate_map.rs
-  line: 188
+  line: 271
   module: cypera-core
 - name: cypera-core
   kind: module
@@ -126,6 +126,11 @@ api:
   kind: function
   file: crates/cypera-core/src/manifest.rs
   line: 108
+  module: cypera-core
+- name: description_inherited
+  kind: function
+  file: crates/cypera-core/src/manifest.rs
+  line: 119
   module: cypera-core
 - name: error
   kind: module
@@ -172,37 +177,32 @@ api:
   file: crates/cypera-core/src/manifest.rs
   line: 94
   module: cypera-core
+- name: purpose_from_entry_doc
+  kind: function
+  file: crates/cypera-core/src/crate_map.rs
+  line: 203
+  module: cypera-core
+- name: purpose_tidy_caps_at_sentence_boundary
+  kind: function
+  file: crates/cypera-core/src/crate_map.rs
+  line: 382
+  module: cypera-core
+- name: purpose_tidy_drops_fences_and_unwraps_links
+  kind: function
+  file: crates/cypera-core/src/crate_map.rs
+  line: 408
+  module: cypera-core
+- name: purpose_tidy_short_doc_passes_through
+  kind: function
+  file: crates/cypera-core/src/crate_map.rs
+  line: 400
+  module: cypera-core
 - name: rank
   kind: function
   file: crates/cypera-core/src/crate_map.rs
-  line: 101
+  line: 106
   module: cypera-core
-- name: render_cli_page
-  kind: function
-  file: crates/cypera-core/src/cli.rs
-  line: 8
-  module: cypera-core
-- name: render_config_page
-  kind: function
-  file: crates/cypera-core/src/config.rs
-  line: 157
-  module: cypera-core
-- name: render_crate_map
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 207
-  module: cypera-core
-- name: render_emits_table_and_modules
-  kind: function
-  file: crates/cypera-core/src/crate_map.rs
-  line: 299
-  module: cypera-core
-- name: renders_field_table
-  kind: function
-  file: crates/cypera-core/src/config.rs
-  line: 238
-  module: cypera-core
-api_omitted: 12
+api_omitted: 18
 deps:
 - serde
 - thiserror
@@ -235,10 +235,10 @@ provenance:
   - 0fdc762e1ea7c1110d7a6cb821eecc15ce6007d4
   - 404750fa02686c9a89a5105b210058b3eaa1ab23
   - c3ee256e81b1ae9801076c487a22dd1700d8d0d0
-  - c7e736e9466b387d705a8fe0722b086be3404f3c
+  - 3d3e43cfc02cc5a003d7ee75b142fe4c48108a81
   - 9f9df258a3fe385b0d14677b796eccc4f3ca2308
-  - 651be13d849fe320c55473579b364f142d7f5f7d
-  - 83ec79b5491b82469c9dc8fbfd76f7793dab4b49
-  commit_sha: 95b9d820bbd7d0795e57e1aad81c7b5460e898f3
-  generated_at: '1794725248'
+  - 4721fed300c6b2dbafb8480395a9645c83399d28
+  - 9a0ee360aeee514fda7330190ca266904c9f71a6
+  commit_sha: cf22987efb8bae518e7a6ccfca4d97f0125faee4
+  generated_at: '1794727162'
   generator: kuda-template/0.1.4

@@ -17,9 +17,9 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use cypera_core::{
-    crate_map_from_workspace, crate_map_table, render_cli_page, render_config_page,
-    render_crate_map, scan_config_structs, scan_entry_source, CrateManifest, EntryScan,
-    WorkspaceManifest,
+    crate_map_from_workspace, crate_map_table, purpose_from_entry_doc, render_cli_page,
+    render_config_page, render_crate_map, scan_config_structs, scan_entry_source, CrateManifest,
+    EntryScan, WorkspaceManifest,
 };
 
 /// cypera — org docs/reference generator.
@@ -223,16 +223,28 @@ fn gen_crate_map(repo: &Path, out: Option<&Path>, layers: &[String]) -> Result<i
             .into_owned();
         let rel = if rel.is_empty() { ".".to_string() } else { rel };
         let mut manifest = CrateManifest::parse(&manifest_path.display().to_string(), &text)?;
-        // `description.workspace = true` inherits
-        // `[workspace.package] description` — resolve it here so
-        // the crate map shows the real text.
-        if manifest.description().is_empty() {
-            if let Some(d) = ws.workspace_description() {
-                manifest.package.description = Some(toml::Value::String(d.to_string()));
+        let entry = scan_entry(dir);
+        // Purpose resolution — the `gen-crate-map.py` `description()`
+        // order: literal `[package] description` → first `//!`
+        // paragraph of the entry file (tidied into one cell) →
+        // `[workspace.package] description` when the crate opts in
+        // (`description.workspace = true`) → `"—"`.
+        let mut purpose = manifest.description().to_string();
+        if purpose.is_empty() {
+            if let Some(e) = &entry {
+                purpose = purpose_from_entry_doc(&e.doc);
+            }
+            if purpose.is_empty() {
+                purpose = if manifest.description_inherited() {
+                    ws.workspace_description().unwrap_or("").to_string()
+                } else {
+                    "—".to_string()
+                };
             }
         }
+        manifest.package.description = Some(toml::Value::String(purpose));
         members.push((rel.clone(), manifest));
-        if let Some(scan) = scan_entry(dir) {
+        if let Some(scan) = entry {
             entries.push((rel, scan));
         }
     }

@@ -1,0 +1,31 @@
+name: sturn-wal
+path: refs/sturn/wal/cypera-docs-migration
+purpose: sturn coordination WAL — claims, writes, snaps, review events in refs/sturn/*
+api:
+- name: luis:claim@cypera-docs-migration#69854cbb
+  kind: record
+  file: refs/sturn/wal/cypera-docs-migration
+  line: 3
+  module: sturn-wal
+- name: luis:claim@cypera-docs-migration#6e1282e3
+  kind: record
+  file: refs/sturn/wal/cypera-docs-migration
+  line: 2
+  module: sturn-wal
+- name: luis:claim@cypera-docs-migration#78d3d3d5
+  kind: record
+  file: refs/sturn/wal/cypera-docs-migration
+  line: 1
+  module: sturn-wal
+deps: []
+notes: ''
+verify:
+- refs/sturn/wal/cypera-docs-migration
+provenance:
+  files:
+  - refs/sturn/wal/cypera-docs-migration
+  hashes:
+  - 69854cbb562e3e710c85747daf5c482a7ce2b675
+  commit_sha: cf22987efb8bae518e7a6ccfca4d97f0125faee4
+  generated_at: '1794727162'
+  generator: kuda-template/0.1.4

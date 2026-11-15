@@ -34,6 +34,7 @@ export default defineConfig({
         items: [
           { text: "Regenerate the CLI reference", link: "/how-to/cli-reference" },
           { text: "Regenerate the config reference", link: "/how-to/config-reference" },
+          { text: "Check the docs contract", link: "/how-to/check-docs" },
         ],
       },
       {
@@ -41,6 +42,7 @@ export default defineConfig({
         items: [
           { text: "Commands", link: "/reference/commands" },
           { text: "Crate map", link: "/reference/crate-map" },
+          { text: "cypera.toml", link: "/reference/cypera-toml" },
         ],
       },
       {

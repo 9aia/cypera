@@ -5,8 +5,8 @@
 | crate | layer | purpose |
 |---|---|---|
 | `cypera-core` | domain | Pure domain logic for cypera — doc-generation models and markdown renderers |
-| `cypera-xtask` | adapter | Workspace automation — check / test / coverage / fmt |
-| `cypera` | binary | Reusable documentation/reference-generation utilities for the 9aia org |
+| `cypera-xtask` | tooling | Workspace automation — check / test / coverage / fmt |
+| `cypera` | binary | cypera — reusable documentation/reference generation for the 9aia org. |
 
 ## Modules
 
@@ -29,7 +29,7 @@ config-reference page renderer (successor to
 - [`cli`] — the CLI-reference page wrapper for `gen-cli-docs`
 output (the `clap-markdown` markdown sibling CLIs emit).
 
-Modules: `cli`, `config`, `crate_map`, `error`, `manifest`. Entry: `src/lib.rs`.
+Modules: `cli`, `config`, `crate_map`, `error`, `manifest`, `repo_config`. Entry: `src/lib.rs`.
 
 ### `cypera-xtask`
 
@@ -49,16 +49,19 @@ No module declarations. Entry: `src/main.rs`.
 cypera — reusable documentation/reference generation for the 9aia
 org. The shared successor to the per-repo `docs/gen-*.py`
 scripts: one tool renders the crate map, CLI reference, and
-config reference pages every sibling docs site needs.
+config reference pages every sibling docs site needs, driven by
+a per-repo `cypera.toml` discovered upward from `--repo`.
 
 ```text
-cypera gen crate-map [--repo <path>] [--out <file>] [--layer <crate=layer>]…
-cypera gen cli       [--input <file|->] [--title <t>] [--out <file>]
-cypera gen config    --file <rs>… [--only <Struct>]… [--title <t>] [--out <file>]
+cypera gen crate-map [--repo <path>] [--config <path>] [--out <file>] [--layer <crate=layer>]…
+cypera gen cli       [--repo <path>] [--config <path>] [--input <file|->] [--out <file>]
+cypera gen config    [--repo <path>] [--config <path>] [--file <rs>]… [--out <file>]
+cypera check         [--repo <path>] [--config <path>] [--json]
 ```
 
 All generation logic lives in `cypera-core` (pure); this crate
-owns argv, filesystem walks, and stdout.
+owns argv, `cypera.toml` discovery, filesystem walks, process
+spawning, and stdout.
 
-No module declarations. Entry: `src/lib.rs`.
+Modules: `check`. Entry: `src/lib.rs`.
 

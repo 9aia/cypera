@@ -36,12 +36,20 @@ The layer column is a heuristic over the org's naming convention:
 | `<repo>-cli` | `binary` |
 | everything else | `adapter` |
 
-Override per crate with `--layer name=layer` (repeatable):
+Override per crate with `--layer name=layer` (repeatable), or
+declare it once in `cypera.toml`:
 
-```bash
-cypera gen crate-map --repo . \
-  --layer myco-ops=ops --layer myco-store=port
+```toml
+[crate_map.layers]
+"myco-ops" = "ops"
+"myco-store" = "port"
 ```
+
+`[crate_map]` also carries `order`/`default_layer` (the kuda/mimus
+`impl` convention), `out` (full-page target), `[[crate_map.splices]]`
+(in-place table rewrites), and `[crate_map.crate_api]` (the rustdoc
+link-list page) — the full schema is in
+[`cypera.toml`](/reference/cypera-toml#crate_map--cypera-gen-crate-map).
 
 ## Write it into a docs site
 

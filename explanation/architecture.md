@@ -11,7 +11,8 @@ unit-testable without a filesystem.
 | crate | layer | purpose |
 |---|---|---|
 | `cypera-core` | domain | Pure domain logic for cypera — doc-generation models and markdown renderers |
-| `cypera-xtask` | tooling | Workspace automation — check / test / coverage / fmt |
+| `cypera-driver` | driver | tamias-driver-cypera — pavo driver exposing a cypera workspace's engine ops (no views) |
+| `cypera-xtask` | tooling | Workspace automation — check / test / coverage / pack / install / fmt |
 | `cypera` | binary | cypera — reusable documentation/reference generation for the 9aia org. |
 
 Regenerate the table above (never hand-edit it):

@@ -2,6 +2,17 @@
 
 ## Install
 
+The `cypera` command ships as a [tamias](https://github.com/9aia/tamias)
+pack (`libraries/cypera`) — a generated `bins[]` shim over
+`tamias-driver-cypera`, like every other 9aia tool. With `tamias`
+installed:
+
+```bash
+tamias install ./libraries/cypera   # from a checkout (after cargo xtask pack)
+```
+
+From a checkout without tamias:
+
 ```bash
 cargo install --path crates/cypera-cli   # from a checkout
 # or

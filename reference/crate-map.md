@@ -5,7 +5,8 @@
 | crate | layer | purpose |
 |---|---|---|
 | `cypera-core` | domain | Pure domain logic for cypera — doc-generation models and markdown renderers |
-| `cypera-xtask` | tooling | Workspace automation — check / test / coverage / fmt |
+| `cypera-driver` | driver | tamias-driver-cypera — pavo driver exposing a cypera workspace's engine ops (no views) |
+| `cypera-xtask` | tooling | Workspace automation — check / test / coverage / pack / install / fmt |
 | `cypera` | binary | cypera — reusable documentation/reference generation for the 9aia org. |
 
 ## Modules
@@ -31,14 +32,66 @@ output (the `clap-markdown` markdown sibling CLIs emit).
 
 Modules: `cli`, `config`, `crate_map`, `error`, `manifest`, `repo_config`. Entry: `src/lib.rs`.
 
+### `cypera-driver`
+
+tamias-driver-cypera — the pavo driver for a cypera workspace,
+plus the engine ops surface.
+
+Verbs (the tamias driver contract):
+
+- `manifest` — print the [`DriverManifest`] JSON (discovery
+probe; never touches workspace state).
+- `capabilities` — `{"capabilities": ["pavo"], "verbs": […]}`.
+- `ops` — the engine ops manifest: every bounded `cypera` CLI
+verb as a `cli.<verb>` wire query, derived from the engine's
+own clap tree ([`cypera::command`]). Unbounded/host-interactive
+verbs are `surfaces`, never ops (cypera has none today).
+- `run <argv>` — engine passthrough: `tamias-driver-cypera run
+check` ≡ `cypera check`. Also the child side of `cli.*` wire
+queries (`ops::run_verb` re-execs this same verb so engine
+output never touches the serve stream).
+- `cli <cypera argv>` — the tamias `bins[]` shim verb: `tamias
+bin exec` calls it with the standard `--dir`/`--name` driver
+flags ahead of the user's argv; they're stripped and the rest
+runs through `cypera::run_from` in-process with inherited
+stdio — full engine parity (`--help`/`version`, globals,
+`--json`, stdin-bound flags all work).
+- `serve` — ndjson JSON-RPC on stdio: `{"op":"manifest"}`,
+`{"op":"views"}`, `{"op":"view","view":…,"params":{…}}`,
+`{"op":"query","query":…,"params":{…}}` →
+`{"ok":true,"result":…}` / `{"ok":false,"error":…}`.
+`query:"ops"` answers the ops manifest; `query:"cli.<verb>"`
+runs the engine op.
+
+Optional surface: feature `mcp` embeds pavo-driver-kit's
+surface layer — `mcp` serves the ops manifest as MCP tools on
+stdio, equivalent to the standalone `tamias-driver-mcp` surface
+driver minus the PATH/discovery hop. (`cli` needs no feature:
+it's the bins-shim passthrough above, not a generated surface —
+the engine's own argv grammar is the contract.)
+
+Which repo: ops inherit the `serve` process's cwd — each verb's
+`--repo`/`--config` params map straight onto the engine's own
+flags, and absent them `cypera`'s upward `cypera.toml` discovery
+applies, identical to running the `cypera` verb by hand. This
+driver ships no views — it is the engine-ops surface for cypera
+workspaces; view/query names outside `ops`/`cli.*` answer
+`ok:false`.
+
+Modules: `ops`, `surface`. Entry: `src/main.rs`.
+
 ### `cypera-xtask`
 
-cypera-xtask — workspace automation: check / test / coverage / fmt.
+cypera-xtask — workspace automation: check / test / coverage /
+pack / install / fmt.
 
 ```text
 cargo xtask check      # fmt --check + clippy -D warnings
 cargo xtask test       # cargo nextest run (falls back to cargo test)
 cargo xtask coverage   # llvm-cov report (extra args pass through)
+cargo xtask pack       # stage libraries/cypera driver payload
+# (release tamias-driver-cypera → drivers/bin/<triple>/)
+cargo xtask install    # release-build tamias-driver-cypera → ~/.local/bin
 cargo xtask fmt        # cargo fmt --all
 ```
 

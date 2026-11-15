@@ -175,6 +175,13 @@ where
     Cli::parse_from(args)
 }
 
+/// The clap command tree — the engine-ops driver's manifest derives
+/// `cli.<verb>` wire queries from this (the org `command()`
+/// convention).
+pub fn command() -> clap::Command {
+    <Cli as clap::CommandFactory>::command()
+}
+
 /// Run the parsed CLI; returns the process exit code.
 pub fn run(cli: Cli) -> Result<i32> {
     match cli.cmd {
@@ -516,15 +523,16 @@ fn gen_crate_map(
                 let root = repo.canonicalize()?;
                 let base = config_dir(&discovered);
                 let n = apply_crate_map_outputs(&root, &base, rc, &map)?;
-                if n == 0 {
-                    if let Some(out_rel) = &rc.crate_map.out {
-                        let target = resolve_path(&root, &base, out_rel);
-                        std::fs::write(&target, &page)
-                            .with_context(|| format!("cannot write {}", target.display()))?;
-                        println!("crate map written to {}", target.display());
-                    } else {
-                        print!("{page}");
-                    }
+                // The `out` page is a declared output like the
+                // splices — `check` freshness verifies it, so it
+                // must be written even when splices ran.
+                if let Some(out_rel) = &rc.crate_map.out {
+                    let target = resolve_path(&root, &base, out_rel);
+                    std::fs::write(&target, &page)
+                        .with_context(|| format!("cannot write {}", target.display()))?;
+                    println!("crate map written to {}", target.display());
+                } else if n == 0 {
+                    print!("{page}");
                 }
             } else {
                 print!("{page}");

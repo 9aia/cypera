@@ -100,8 +100,8 @@ pub struct CrateMapConfig {
     #[serde(default)]
     pub crate_api: Option<CrateApiConfig>,
     /// Full-page emit target (`docs/reference/crate-map.md`) —
-    /// used when no `--out` flag and no splices are declared, and
-    /// checked by `cypera check` freshness.
+    /// written by `gen crate-map` alongside any splices/crate_api
+    /// (no `--out` flag), and checked by `cypera check` freshness.
     #[serde(default)]
     pub out: Option<String>,
 }

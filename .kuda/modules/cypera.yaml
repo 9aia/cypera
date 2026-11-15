@@ -15,7 +15,7 @@ api:
 - name: CliOpts
   kind: type
   file: crates/cypera-cli/src/lib.rs
-  line: 541
+  line: 549
   module: cypera
 - name: Cmd
   kind: type
@@ -90,7 +90,7 @@ api:
 - name: apply_crate_map_outputs
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 443
+  line: 450
   module: cypera
 - name: as_str
   kind: function
@@ -100,7 +100,7 @@ api:
 - name: build_crate_map
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 356
+  line: 363
   module: cypera
 - name: changelog_rule
   kind: function
@@ -110,22 +110,27 @@ api:
 - name: check
   kind: module
   file: crates/cypera-cli/src/lib.rs
-  line: 926
+  line: 934
   module: cypera
 - name: cli_help_page
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 624
+  line: 632
+  module: cypera
+- name: command
+  kind: function
+  file: crates/cypera-cli/src/lib.rs
+  line: 181
   module: cypera
 - name: config_dir
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 279
+  line: 286
   module: cypera
 - name: config_doc_page
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 776
+  line: 784
   module: cypera
 - name: cypera
   kind: module
@@ -140,7 +145,7 @@ api:
 - name: discover_config
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 248
+  line: 255
   module: cypera
 - name: docs_check_script_rule
   kind: function
@@ -155,17 +160,17 @@ api:
 - name: emit
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 902
+  line: 910
   module: cypera
 - name: emit_to_path
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 906
+  line: 914
   module: cypera
 - name: expand_members
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 316
+  line: 323
   module: cypera
 - name: fail
   kind: function
@@ -185,24 +190,19 @@ api:
 - name: gen_cli
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 550
+  line: 558
   module: cypera
 - name: gen_config
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 715
+  line: 723
   module: cypera
 - name: gen_crate_map
   kind: function
   file: crates/cypera-cli/src/lib.rs
-  line: 478
+  line: 485
   module: cypera
-- name: help_text
-  kind: function
-  file: crates/cypera-cli/src/lib.rs
-  line: 639
-  module: cypera
-api_omitted: 17
+api_omitted: 18
 deps:
 - anyhow
 - clap
@@ -232,8 +232,8 @@ provenance:
   - ae84f2606c2a6b6f2d9e325f64fa54e8fb653c32
   - 568fdff16e38026abf786625ce824023846ed5ee
   - e6eb828ce2bddb5b50eadae17a1b4b509352b41f
-  - 9189d9bedf22895f507eb9d65141dad621b6d666
+  - 195e8605bb06acaaf22483298fc35a9507887e6f
   - fa7b5ea5bde09bd04d92ae1b63028ec43cd30f9d
-  commit_sha: 67324bab6a951e6cac7d53bde5966652981284c5
-  generated_at: '1794757852'
+  commit_sha: d7a4d2b6c37cddb2bae714812f7a60009c363120
+  generated_at: '1794758501'
   generator: kuda-template/0.1.4

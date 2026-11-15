@@ -48,6 +48,11 @@
 //! text = """
 //! - `deny_unknown_fields`: typos fail the load.
 //! """
+//!
+//! [api]                        # gen api — rustdoc site (optional)
+//! out = "docs/public/api"      #   target/doc copy destination
+//! prefix = "myco"              #   index filter + title base
+//! target_dir = "target/docs-api"  # CARGO_TARGET_DIR when unset
 //! ```
 //!
 //! Pure model + TOML decoding — the IO layer (discovery, file
@@ -71,6 +76,11 @@ pub struct RepoConfig {
     /// `[config]` — the config-reference page spec.
     #[serde(default)]
     pub config: Option<ConfigDocConfig>,
+    /// `[api]` — the rustdoc API-site knobs (`gen api`). All
+    /// fields optional; absent `[api]` means the python
+    /// `gen-api*.py` defaults.
+    #[serde(default)]
+    pub api: ApiConfig,
 }
 
 /// `[crate_map]` — absorbs the per-repo `LAYER`/`ORDER`/`SITE`
@@ -131,6 +141,35 @@ pub struct CrateApiConfig {
     pub site: String,
     /// Output file, relative to the repo root.
     pub out: String,
+}
+
+/// `[api]` — `cypera gen api`: `cargo doc --workspace --no-deps`
+/// in the repo, `<target>/doc` copied into the docs site's
+/// `public/api/`, plus the styled crate index. Absorbs the
+/// per-repo `docs/gen-api.py` + `docs/gen-api-index.py` pair (and
+/// the inline `docs:api` shell bupha/kuda/mimus carried). The
+/// output is a gitignored build artifact — no `check` freshness.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct ApiConfig {
+    /// Rustdoc site dir, repo-relative — the python
+    /// `DOCS / "public" / "api"`. Default `docs/public/api`.
+    #[serde(default)]
+    pub out: Option<String>,
+    /// Crate-dir name prefix the index lists and the title is
+    /// built from — the python `startswith("<repo>")` filter.
+    /// Default: the repo directory name.
+    #[serde(default)]
+    pub prefix: Option<String>,
+    /// Index `<title>`/`<h1>` text. Default `"{prefix} — Crate
+    /// API"`.
+    #[serde(default)]
+    pub title: Option<String>,
+    /// Repo-local cargo target dir for the doc build, exported as
+    /// `CARGO_TARGET_DIR` when the env var is unset — the myco
+    /// `target/docs-api` isolation convention (a shared target
+    /// dir served stale rmeta). Resolved repo-root-relative.
+    #[serde(default)]
+    pub target_dir: Option<String>,
 }
 
 /// `[cli]` — how to reach the CLI for the `--help` walk. Mirrors
@@ -387,6 +426,23 @@ text = "- typos fail"
         assert!(cfg.crate_map.splices.is_empty());
         assert!(cfg.cli.is_none());
         assert!(cfg.config.is_none());
+        assert!(cfg.api.out.is_none());
+    }
+
+    #[test]
+    fn parses_api_section() {
+        let text = r#"
+[api]
+out = "docs/public/api"
+prefix = "myco"
+title = "myco — Crate API"
+target_dir = "target/docs-api"
+"#;
+        let cfg = RepoConfig::parse("cypera.toml", text).unwrap();
+        assert_eq!(cfg.api.out.as_deref(), Some("docs/public/api"));
+        assert_eq!(cfg.api.prefix.as_deref(), Some("myco"));
+        assert_eq!(cfg.api.title.as_deref(), Some("myco — Crate API"));
+        assert_eq!(cfg.api.target_dir.as_deref(), Some("target/docs-api"));
     }
 
     #[test]

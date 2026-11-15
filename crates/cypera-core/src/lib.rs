@@ -15,6 +15,7 @@
 //! - [`cli`] — the CLI-reference page wrapper for `gen-cli-docs`
 //!   output (the `clap-markdown` markdown sibling CLIs emit).
 
+pub mod api;
 pub mod cli;
 pub mod config;
 pub mod crate_map;
@@ -22,6 +23,7 @@ pub mod error;
 pub mod manifest;
 pub mod repo_config;
 
+pub use api::render_api_index;
 pub use cli::{anchor, esc_md, parse_help, prog_name, render_cli_page, render_help_walk, HelpNode};
 pub use config::{
     render_config_doc_page, render_config_page, scan_config_structs, type_label, ConfigDocSection,
@@ -35,6 +37,6 @@ pub use crate_map::{
 pub use error::CyperaError;
 pub use manifest::{CrateManifest, WorkspaceManifest};
 pub use repo_config::{
-    CliConfig, ConfigDocConfig, ConfigSection, ConfigStructRef, CrateApiConfig, CrateMapConfig,
-    CrateMapSplice, RepoConfig,
+    ApiConfig, CliConfig, ConfigDocConfig, ConfigSection, ConfigStructRef, CrateApiConfig,
+    CrateMapConfig, CrateMapSplice, RepoConfig,
 };

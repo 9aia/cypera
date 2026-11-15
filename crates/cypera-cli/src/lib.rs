@@ -8,6 +8,7 @@
 //! cypera gen crate-map [--repo <path>] [--config <path>] [--out <file>] [--layer <crate=layer>]…
 //! cypera gen cli       [--repo <path>] [--config <path>] [--input <file|->] [--out <file>]
 //! cypera gen config    [--repo <path>] [--config <path>] [--file <rs>]… [--out <file>]
+//! cypera gen api       [--repo <path>] [--config <path>] [--out <dir>] [--target-dir <dir>]
 //! cypera check         [--repo <path>] [--config <path>] [--json]
 //! ```
 //!
@@ -22,10 +23,10 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use cypera_core::{
     crate_api_page, crate_map_from_workspace, crate_map_table, parse_help, prog_name,
-    purpose_from_entry_doc, render_cli_page, render_config_doc_page, render_config_page,
-    render_crate_map, render_help_walk, scan_config_structs, scan_entry_source, splice_first_table,
-    splice_marked, CliConfig, ConfigDocConfig, ConfigDocSection, ConfigStruct, CrateManifest,
-    EntryScan, HelpNode, RepoConfig, WorkspaceManifest,
+    purpose_from_entry_doc, render_api_index, render_cli_page, render_config_doc_page,
+    render_config_page, render_crate_map, render_help_walk, scan_config_structs, scan_entry_source,
+    splice_first_table, splice_marked, CliConfig, ConfigDocConfig, ConfigDocSection, ConfigStruct,
+    CrateManifest, EntryScan, HelpNode, RepoConfig, WorkspaceManifest,
 };
 
 /// cypera — org docs/reference generator.
@@ -167,6 +168,40 @@ pub enum Gen {
         #[arg(long)]
         out: Option<PathBuf>,
     },
+    /// Rustdoc API site — the `docs/gen-api*.py` port:
+    /// `cargo doc --workspace --no-deps` in the repo, the real
+    /// target dir resolved via `cargo metadata` (respects a
+    /// configured `target-dir`), `<target>/doc` copied into the
+    /// docs site's `public/api/`, and a styled crate index
+    /// written to `index.html`. The output is a gitignored
+    /// build artifact — `check` has nothing to freshness-gate.
+    /// `[api]` in cypera.toml supplies `out`/`prefix`/`title`/
+    /// `target_dir`; every field is optional.
+    Api {
+        /// Repo root — the `cargo doc`/`cargo metadata` cwd.
+        /// A `<NAME>_ROOT` env var (NAME = the cypera.toml dir's
+        /// basename, uppercased — the python `TAMIAS_ROOT`/
+        /// `MYCO_ROOT`/… convention) overrides it, which is how
+        /// detached-sha doc pipelines point at the real checkout.
+        /// Default: current directory.
+        #[arg(long, default_value = ".")]
+        repo: PathBuf,
+        /// Explicit `cypera.toml` path (default: discovered upward
+        /// from `--repo`).
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// API output *dir* override — replaces
+        /// `[api].out`/`docs/public/api`; a relative path resolves
+        /// against the cwd (run from the docs worktree to land in
+        /// a detached docs checkout, the python `DOCS` anchor).
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Cargo target dir for the doc build — exported as
+        /// `CARGO_TARGET_DIR` when unset (`[api].target_dir`
+        /// fallback; the myco `target/docs-api` isolation).
+        #[arg(long)]
+        target_dir: Option<PathBuf>,
+    },
 }
 
 /// `parse_from`/`run_from` split so drivers/tests can inject argv —
@@ -248,6 +283,17 @@ fn run_gen(gen: Gen) -> Result<i32> {
             &only,
             title.as_deref(),
             out.as_deref(),
+        ),
+        Gen::Api {
+            repo,
+            config,
+            out,
+            target_dir,
+        } => gen_api(
+            &repo,
+            config.as_deref(),
+            out.as_deref(),
+            target_dir.as_deref(),
         ),
     }
 }
@@ -947,6 +993,232 @@ fn config_doc_page(
         &doc.field_types,
         &style,
     ))
+}
+
+// ---------- api ----------
+
+/// `<NAME>_ROOT` env override — NAME is the basename of the dir
+/// holding `cypera.toml` (the repo root in the common case),
+/// uppercased with non-alphanumerics folded to `_`. This is the
+/// python `gen-api.py` `TAMIAS_ROOT`/`MYCO_ROOT`/`CUORA_ROOT`/
+/// `PAVO_ROOT` convention generalized: under bupha the docs sha
+/// runs detached and the env var points cargo at the real
+/// checkout.
+fn api_root_env_name(config_dir: &Path, repo: &Path) -> String {
+    let base = if config_dir.as_os_str().is_empty() {
+        repo
+    } else {
+        config_dir
+    };
+    base.file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "repo".to_string())
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_uppercase()
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>()
+        + "_ROOT"
+}
+
+/// Recursive dir copy — the python `shutil.copytree` half of
+/// `gen-api.py` (dirs recurse, everything else `fs::copy`).
+fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
+    std::fs::create_dir_all(dst).with_context(|| format!("cannot create {}", dst.display()))?;
+    for entry in std::fs::read_dir(src).with_context(|| format!("cannot read {}", src.display()))? {
+        let entry = entry?;
+        let s = entry.path();
+        let d = dst.join(entry.file_name());
+        // `is_dir` follows symlinks — python's copytree default.
+        if s.is_dir() {
+            copy_dir_all(&s, &d)?;
+        } else {
+            std::fs::copy(&s, &d).with_context(|| format!("cannot copy {}", s.display()))?;
+        }
+    }
+    Ok(())
+}
+
+/// `cypera gen api` — the `docs/gen-api.py` port:
+///
+/// 1. `cargo doc --workspace --no-deps` in the repo root.
+/// 2. `cargo metadata --no-deps --format-version 1` → the real
+///    `target_directory` (respects `build.target-dir` and
+///    `CARGO_TARGET_DIR`).
+/// 3. Empty the api dir, copy `<target>/doc` into it.
+/// 4. Write the styled `index.html` over the crate dirs whose
+///    names start with the prefix (the `gen-api-index.py`
+///    `startswith("<repo>")` filter).
+fn gen_api(
+    repo: &Path,
+    config: Option<&Path>,
+    out: Option<&Path>,
+    target_dir_flag: Option<&Path>,
+) -> Result<i32> {
+    let discovered = discover_config(repo, config)?;
+    let rc = discovered.as_ref().map(|(_, c)| c);
+    let api_cfg = rc.map(|c| &c.api);
+    let base = config_dir(&discovered);
+
+    // Repo root: the `<NAME>_ROOT` env override wins (python
+    // parity — the scripts read `os.environ["<REPO>_ROOT"]`
+    // before falling back to the checkout); else canonical
+    // `--repo`. NAME comes from the cypera.toml dir when one was
+    // found, else the repo dir itself.
+    let repo_canon = repo
+        .canonicalize()
+        .with_context(|| format!("--repo {} does not exist", repo.display()))?;
+    let env_base = if discovered.is_some() {
+        base.clone()
+    } else {
+        repo_canon.clone()
+    };
+    let env_name = api_root_env_name(&env_base, &repo_canon);
+    let mut root = repo_canon;
+    if let Ok(v) = std::env::var(&env_name) {
+        if !v.is_empty() {
+            root = PathBuf::from(&v)
+                .canonicalize()
+                .with_context(|| format!("{env_name}={v}: not a directory"))?;
+        }
+    }
+
+    // CARGO_TARGET_DIR for the doc build — flag > `[api].target_dir`;
+    // only exported when the env var is unset (the python
+    // `os.environ.setdefault` semantics — an explicit env always
+    // wins, and `cargo metadata` resolves it the same way).
+    let target_dir = target_dir_flag.map(Path::to_path_buf).or_else(|| {
+        api_cfg.and_then(|a| {
+            a.target_dir.as_ref().map(|rel| {
+                let p = Path::new(rel);
+                if p.is_absolute() {
+                    p.to_path_buf()
+                } else {
+                    root.join(p)
+                }
+            })
+        })
+    });
+    let cargo_env = |cmd: &mut std::process::Command| {
+        if std::env::var_os("CARGO_TARGET_DIR").is_none() {
+            if let Some(td) = &target_dir {
+                cmd.env("CARGO_TARGET_DIR", td);
+            }
+        }
+    };
+
+    // 1. cargo doc --workspace --no-deps.
+    let mut doc = std::process::Command::new("cargo");
+    doc.args(["doc", "--workspace", "--no-deps"])
+        .current_dir(&root);
+    cargo_env(&mut doc);
+    let out_doc = doc.output().with_context(|| "cannot spawn `cargo doc`")?;
+    if !out_doc.status.success() {
+        bail!(
+            "cargo doc --workspace --no-deps failed in {}:\n{}",
+            root.display(),
+            String::from_utf8_lossy(&out_doc.stderr)
+        );
+    }
+
+    // 2. cargo metadata → target_directory.
+    let mut meta = std::process::Command::new("cargo");
+    meta.args(["metadata", "--no-deps", "--format-version", "1"])
+        .current_dir(&root);
+    cargo_env(&mut meta);
+    let out_meta = meta
+        .output()
+        .with_context(|| "cannot spawn `cargo metadata`")?;
+    if !out_meta.status.success() {
+        bail!(
+            "cargo metadata failed in {}:\n{}",
+            root.display(),
+            String::from_utf8_lossy(&out_meta.stderr)
+        );
+    }
+    let meta_json: serde_json::Value =
+        serde_json::from_slice(&out_meta.stdout).context("cannot parse `cargo metadata` output")?;
+    let target_dir_str = meta_json["target_directory"]
+        .as_str()
+        .context("cargo metadata: no target_directory")?;
+    let doc_dir = Path::new(target_dir_str).join("doc");
+    if !doc_dir.is_dir() {
+        bail!("cargo doc produced no {}", doc_dir.display());
+    }
+
+    // 3. api dir — `--out` (cwd-relative) > `[api].out`
+    // (repo-relative, default `docs/public/api`).
+    let api_dir = match out {
+        Some(p) => p.to_path_buf(),
+        None => {
+            let rel = api_cfg.and_then(|a| a.out.clone());
+            match rel {
+                Some(rel) => resolve_path(&root, &base, &rel),
+                None => root.join("docs").join("public").join("api"),
+            }
+        }
+    };
+    std::fs::create_dir_all(&api_dir)
+        .with_context(|| format!("cannot create {}", api_dir.display()))?;
+    // Empty it first — the python `for c in api.iterdir(): rmtree/unlink`.
+    for entry in
+        std::fs::read_dir(&api_dir).with_context(|| format!("cannot read {}", api_dir.display()))?
+    {
+        let entry = entry?;
+        let p = entry.path();
+        if p.is_dir() {
+            std::fs::remove_dir_all(&p)?;
+        } else {
+            std::fs::remove_file(&p)?;
+        }
+    }
+    for entry in
+        std::fs::read_dir(&doc_dir).with_context(|| format!("cannot read {}", doc_dir.display()))?
+    {
+        let entry = entry?;
+        let s = entry.path();
+        let d = api_dir.join(entry.file_name());
+        if s.is_dir() {
+            copy_dir_all(&s, &d)?;
+        } else {
+            std::fs::copy(&s, &d).with_context(|| format!("cannot copy {}", s.display()))?;
+        }
+    }
+
+    // 4. index — crate dirs (name starts with the prefix),
+    // sorted, `_`→`-` labels; title `"{prefix} — Crate API"`.
+    let prefix = api_cfg.and_then(|a| a.prefix.clone()).unwrap_or_else(|| {
+        root.file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "repo".to_string())
+    });
+    let title = api_cfg
+        .and_then(|a| a.title.clone())
+        .unwrap_or_else(|| format!("{prefix} — Crate API"));
+    let mut crates: Vec<String> = std::fs::read_dir(&api_dir)
+        .with_context(|| format!("cannot read {}", api_dir.display()))?
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let p = e.path();
+            p.is_dir()
+                && e.file_name()
+                    .to_str()
+                    .is_some_and(|n| n.starts_with(&prefix))
+        })
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    crates.sort();
+    let page = render_api_index(&title, &crates);
+    let index_path = api_dir.join("index.html");
+    std::fs::write(&index_path, page)
+        .with_context(|| format!("cannot write {}", index_path.display()))?;
+    println!("rustdoc api written to {}", api_dir.display());
+    println!("api index: {} crates", crates.len());
+    Ok(0)
 }
 
 // ---------- emit ----------

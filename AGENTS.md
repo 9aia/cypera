@@ -19,8 +19,8 @@ command ships as a generated `bins[]` shim over
 
 | Crate | Role |
 | --- | --- |
-| `crates/cypera-core` | Pure domain — `Cargo.toml` manifest models (`manifest`), crate-map model + renderer + entry-file scanner (`crate_map`), config-struct doc-comment scanner + renderer (`config`), CLI help-walk parser/renderer (`cli`), the `cypera.toml` schema (`repo_config`). String in, markdown out; never touches `std::fs`/`std::process`. |
-| `crates/cypera-cli` | package `cypera` — the binary + engine lib (`parse_from`/`run_from`/`command()` per org convention). `gen crate-map` (workspace walk, member-glob expansion, `src/lib.rs`/`main.rs` scan, `--layer` overrides, `--out` with marker splicing), `gen cli` (recursive `<bin> --help` walk, or `--input` wrap of `gen-cli-docs` markdown), `gen config` (`--file` scans, `--only` filter, or `cypera.toml` curated sections), `check` (the docs contract — README/AGENTS/Diátaxis/freshness, `--repo`, `--json`). All three gens discover `cypera.toml` upward from `--repo`/cwd. |
+| `crates/cypera-core` | Pure domain — `Cargo.toml` manifest models (`manifest`), crate-map model + renderer + entry-file scanner (`crate_map`), config-struct doc-comment scanner + renderer (`config`), CLI help-walk parser/renderer (`cli`), the rustdoc index-page renderer (`api`), the `cypera.toml` schema (`repo_config`). String in, markdown out; never touches `std::fs`/`std::process`. |
+| `crates/cypera-cli` | package `cypera` — the binary + engine lib (`parse_from`/`run_from`/`command()` per org convention). `gen crate-map` (workspace walk, member-glob expansion, `src/lib.rs`/`main.rs` scan, `--layer` overrides, `--out` with marker splicing), `gen cli` (recursive `<bin> --help` walk, or `--input` wrap of `gen-cli-docs` markdown), `gen config` (`--file` scans, `--only` filter, or `cypera.toml` curated sections), `gen api` (`cargo doc --workspace --no-deps` + `cargo metadata` target-dir resolution → `<target>/doc` copied into `docs/public/api` + styled crate index — the `gen-api*.py` port; `<NAME>_ROOT` env override, `[api]` config), `check` (the docs contract — README/AGENTS/Diátaxis/freshness, `--repo`, `--json`). All gens discover `cypera.toml` upward from `--repo`/cwd. |
 | `crates/cypera-driver` | `tamias-driver-cypera` — pavo driver exposing the engine ops surface: every bounded `cypera` verb as a `cli.<verb>` wire query derived from `cypera::command()` (no views, no surfaces — every verb is bounded), `run <argv>` + `cli <argv>` passthroughs re-execing the engine in-process (`cli` is the `bins[]` shim verb — strips `--dir`/`--name`, inherited stdio), feature-gated `mcp` embedded surface. The shipped `cypera` command rides this driver via `libraries/cypera`. |
 | `libraries/cypera` | the tamias pack — `tamias.yaml` declares `bins: [{name: cypera, shim: cli, driver: cypera}]`; `cargo xtask pack` stages `drivers/bin/<triple>/tamias-driver-cypera` (gitignored) |
 | `xtask` (`cypera-xtask`) | `check` (fmt + clippy -D warnings) / `test` (nextest or cargo test) / `coverage` (llvm-cov) / `pack` (stage the pack payload) / `install` (release driver → `~/.local/bin`) / `fmt` |
@@ -56,7 +56,8 @@ not own:
 - **`gen-cli-docs` producers** — cypera's `gen cli` now walks
   `<bin> --help` itself; the wrap mode (`--input`) remains for
   repos still emitting clap-markdown bodies.
-- **rustdoc** — `cargo doc` API pages remain a separate pipeline;
+- **rustdoc internals** — `gen api` orchestrates `cargo doc` and
+  copies `<target>/doc` verbatim; it does not parse rustdoc JSON.
   cypera's `crate_api` config only emits the rustdoc *link list*.
 - **myco/sturn/kuda/tarsi** — ledger, coordination, code maps, and
   releases are their own repos' concerns.

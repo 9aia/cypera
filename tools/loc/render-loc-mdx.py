@@ -20,6 +20,11 @@ def table(headers, rows):
     return "\n".join(lines)
 
 
+def js_rows(rows):
+    # Compact JSON is a valid JS object/array literal for MDX props.
+    return json.dumps(rows, separators=(",", ":"))
+
+
 def render(data, s, lang):
     t = data["total"]
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -50,6 +55,22 @@ def render(data, s, lang):
         for lang_name, v in data["languages"].items()
     ]
 
+    repo_chart = [
+        {"name": repo, "files": r["files"], "lines": r["lines"], "code": r["code"]}
+        for repo, r in sorted(data["repos"].items(), key=lambda kv: -kv[1]["code"])
+    ]
+    lang_chart = [
+        {
+            "name": lang_name,
+            "files": v["files"],
+            "lines": v["lines"],
+            "code": v["code"],
+            "comments": v["comments"],
+            "blanks": v["blanks"],
+        }
+        for lang_name, v in data["languages"].items()
+    ]
+
     parts = [
         "---",
         f'title: "{s["title"]}"',
@@ -59,9 +80,13 @@ def render(data, s, lang):
         "",
         f"## {s['per_repo']}",
         "",
+        f'<LocRepoChart locale="{lang}" data={{{js_rows(repo_chart)}}} />',
+        "",
         table([s["col_repo"], s["col_files"], s["col_lines"], s["col_code"]], repo_rows),
         "",
         f"## {s['per_lang']}",
+        "",
+        f'<LocLangChart locale="{lang}" data={{{js_rows(lang_chart)}}} />',
         "",
         table(
             [s["col_lang"], s["col_files"], s["col_lines"], s["col_code"], s["col_comments"], s["col_blanks"]],

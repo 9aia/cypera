@@ -5,7 +5,7 @@
 # `files` pack — invoke scripts from the store payload path. CI uses
 # the same channel: the loc-org/loc-repo reusable workflows install
 # this pack via tamias and run tools/loc/* from the payload dir.
-name: cypera
+name: cypera-toolbox
 version: "0.2.0"
 type: files
 description: >-

@@ -15,9 +15,9 @@ name: loc-org
 #     (version pinned by the `tamias_ref` input).
 #   - `tamias install git:9aia/cypera#<tool_ref>` installs this repo as a
 #     `type: files` pack; tools run from the store payload dir
-#     (`tamias info cypera --json` → `dir`).
+#     (`tamias info cypera-toolbox --json` → `dir`).
 #   - `tamias install <config_ref>` installs the caller org's loc config
-#     pack — a `type: files` pack named `ktb-loc-config` containing a
+#     pack — an org `type: files` config pack containing a
 #     `loc.yaml` with keys: org, repos, docs_repo, docs_outputs,
 #     docs_branch, pr_base, token_broker_url (docs_* may be omitted to
 #     skip the docs job at runtime).
@@ -35,7 +35,7 @@ on:
       config_ref:
         description: >-
           Tamias ref to the org's loc config pack (a `type: files` pack
-          named `ktb-loc-config` containing `loc.yaml`), e.g.
+          containing `loc.yaml`), e.g.
           `git:ktbhealth/.github//packs/loc#main`
         required: true
         type: string
@@ -48,7 +48,7 @@ on:
         description: Semver tag of 9aia/tamias used by the setup-tamias action
         required: false
         type: string
-        default: v0.1.0
+        default: v0.1.5
     secrets:
       DOCS_BOT_TOKEN:
         description: PAT/App token with contents+pull-requests write on docs_repo (fallback when token_broker_url is unset)
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: 9aia/tamias/actions/setup-tamias@v0.1.0
+      - uses: 9aia/tamias/actions/setup-tamias@v0.1.5
         with:
           ref: ${{ inputs.tamias_ref }}
       - name: Install cypera tools
@@ -76,13 +76,22 @@ jobs:
           TOOL_REF: ${{ inputs.tool_ref }}
         run: |
           tamias install "git:9aia/cypera#${TOOL_REF}"
-          echo "CYPERA_DIR=$(tamias info cypera --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
+          echo "CYPERA_DIR=$(tamias info cypera-toolbox --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
       - name: Install org loc config
         env:
           CONFIG_REF: ${{ inputs.config_ref }}
         run: |
           tamias install "${CONFIG_REF}"
-          echo "LOC_CONFIG_DIR=$(tamias info ktb-loc-config --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
+          LOC_CONFIG_DIR=$(tamias list --json | python3 -c '
+          import json, os, sys
+          ref = os.environ["CONFIG_REF"]
+          pkgs = json.load(sys.stdin)["packages"]
+          match = [p for p in pkgs if p.get("source_ref") == ref]
+          if not match:
+              sys.exit(f"no installed package with source_ref {ref!r}")
+          print(match[-1]["dir"])
+          ')
+          echo "LOC_CONFIG_DIR=${LOC_CONFIG_DIR}" >> "$GITHUB_ENV"
       - name: Parse loc config
         run: |
           python3 - <<'EOF' >> "$GITHUB_ENV"
@@ -158,7 +167,7 @@ jobs:
       DOCS_BOT_TOKEN: ${{ secrets.DOCS_BOT_TOKEN }}
       TOKEN_MINT_SECRET: ${{ secrets.TOKEN_MINT_SECRET }}
     steps:
-      - uses: 9aia/tamias/actions/setup-tamias@v0.1.0
+      - uses: 9aia/tamias/actions/setup-tamias@v0.1.5
         with:
           ref: ${{ inputs.tamias_ref }}
       - name: Install org loc config
@@ -166,7 +175,16 @@ jobs:
           CONFIG_REF: ${{ inputs.config_ref }}
         run: |
           tamias install "${CONFIG_REF}"
-          echo "LOC_CONFIG_DIR=$(tamias info ktb-loc-config --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
+          LOC_CONFIG_DIR=$(tamias list --json | python3 -c '
+          import json, os, sys
+          ref = os.environ["CONFIG_REF"]
+          pkgs = json.load(sys.stdin)["packages"]
+          match = [p for p in pkgs if p.get("source_ref") == ref]
+          if not match:
+              sys.exit(f"no installed package with source_ref {ref!r}")
+          print(match[-1]["dir"])
+          ')
+          echo "LOC_CONFIG_DIR=${LOC_CONFIG_DIR}" >> "$GITHUB_ENV"
       - name: Parse loc config
         run: |
           python3 - <<'EOF' >> "$GITHUB_ENV"
@@ -211,7 +229,7 @@ jobs:
           TOOL_REF: ${{ inputs.tool_ref }}
         run: |
           tamias install "git:9aia/cypera#${TOOL_REF}"
-          echo "CYPERA_DIR=$(tamias info cypera --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
+          echo "CYPERA_DIR=$(tamias info cypera-toolbox --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v7
         with:
           name: loc-results

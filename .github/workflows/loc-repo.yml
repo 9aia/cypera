@@ -33,7 +33,7 @@ on:
         description: Semver tag of 9aia/tamias used by the setup-tamias action
         required: false
         type: string
-        default: v0.1.0
+        default: v0.1.5
     secrets:
       LOC_READ_TOKEN:
         description: PAT with read access — only needed if the caller repo is private
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           token: ${{ secrets.LOC_READ_TOKEN || github.token }}
-      - uses: 9aia/tamias/actions/setup-tamias@v0.1.0
+      - uses: 9aia/tamias/actions/setup-tamias@v0.1.5
         with:
           ref: ${{ inputs.tamias_ref }}
       - name: Install cypera tools
@@ -58,7 +58,7 @@ jobs:
           TOOL_REF: ${{ inputs.tool_ref }}
         run: |
           tamias install "git:9aia/cypera#${TOOL_REF}"
-          echo "CYPERA_DIR=$(tamias info cypera --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
+          echo "CYPERA_DIR=$(tamias info cypera-toolbox --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
       - name: Read cypera config
         run: |
           cd "$CYPERA_DIR"

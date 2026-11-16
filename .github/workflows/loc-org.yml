@@ -5,63 +5,50 @@ name: loc-org
 # Called as a job from an org-level workflow (e.g. ktbhealth/.github):
 #
 #   loc:
-#     uses: 9aia/cypera/.github/workflows/loc-org.yml@<ref>
+#     uses: 9aia/cypera/.github/workflows/loc-org.yml@v0.2.0
 #     with:
-#       org: ktbhealth
-#       repos: product docs ui ...
-#       docs_repo: ktbhealth/docs
-#       docs_outputs: |
-#         en=content/docs/en/developers/root/reference/codebase-metrics.mdx
-#         pt-BR=content/docs/pt-BR/developers/root/reference/codebase-metrics.mdx
+#       config_ref: git:ktbhealth/.github//packs/loc#main
 #     secrets: inherit
 #
-# Job `count` shallow-clones every repo in `repos`, counts with the shared
-# exclude list, writes a job summary and uploads a loc-results artifact.
-# Job `publish-docs` (only when docs_repo + a token source — token broker
-# or DOCS_BOT_TOKEN — are provided)
-# regenerates the metrics pages and opens/updates a PR on docs_branch.
+# Distribution is via tamias, not actions/checkout:
+#   - 9aia/tamias/actions/setup-tamias installs the tamias CLI
+#     (version pinned by the `tamias_ref` input).
+#   - `tamias install git:9aia/cypera#<tool_ref>` installs this repo as a
+#     `type: files` pack; tools run from the store payload dir
+#     (`tamias info cypera --json` → `dir`).
+#   - `tamias install <config_ref>` installs the caller org's loc config
+#     pack — a `type: files` pack named `ktb-loc-config` containing a
+#     `loc.yaml` with keys: org, repos, docs_repo, docs_outputs,
+#     docs_branch, pr_base, token_broker_url (docs_* may be omitted to
+#     skip the docs job at runtime).
+#
+# Job `count` clones every repo in `repos`, counts with the shared
+# exclude list (cypera.toml inside the installed pack), writes a job
+# summary and uploads a loc-results artifact. Job `publish-docs`
+# regenerates the metrics pages and opens/updates a PR on docs_branch
+# when the config pack provides docs settings and a token source
+# (token broker or DOCS_BOT_TOKEN) is available.
 
 on:
   workflow_call:
     inputs:
-      org:
-        description: GitHub org/user that owns the repos
+      config_ref:
+        description: >-
+          Tamias ref to the org's loc config pack (a `type: files` pack
+          named `ktb-loc-config` containing `loc.yaml`), e.g.
+          `git:ktbhealth/.github//packs/loc#main`
         required: true
         type: string
-      repos:
-        description: Space-separated repository names to count
-        required: true
-        type: string
-      docs_repo:
-        description: "owner/name of the docs repo to update (empty = skip)"
-        required: false
-        type: string
-        default: ""
-      docs_outputs:
-        description: "One '<locale>=<repo-relative-path.mdx>' per line"
-        required: false
-        type: string
-        default: ""
-      docs_branch:
-        description: Branch name for the docs update PR
-        required: false
-        type: string
-        default: loc-metrics
-      pr_base:
-        description: Base branch for the docs PR
-        required: false
-        type: string
-        default: main
-      token_broker_url:
-        description: "Optional token-broker base URL (e.g. https://ci.example.workers.dev) — mints a short-lived installation token for docs_repo instead of needing DOCS_BOT_TOKEN"
-        required: false
-        type: string
-        default: ""
       tool_ref:
-        description: Ref of 9aia/cypera to take tools/loc from
+        description: Semver tag of 9aia/cypera to install tools/loc from
         required: false
         type: string
-        default: main
+        default: v0.2.0
+      tamias_ref:
+        description: Semver tag of 9aia/tamias used by the setup-tamias action
+        required: false
+        type: string
+        default: v0.1.0
     secrets:
       DOCS_BOT_TOKEN:
         description: PAT/App token with contents+pull-requests write on docs_repo (fallback when token_broker_url is unset)
@@ -81,18 +68,68 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: 9aia/tamias/actions/setup-tamias@v0.1.0
         with:
-          repository: 9aia/cypera
-          path: cypera
-          ref: ${{ inputs.tool_ref }}
+          ref: ${{ inputs.tamias_ref }}
+      - name: Install cypera tools
+        env:
+          TOOL_REF: ${{ inputs.tool_ref }}
+        run: |
+          tamias install "git:9aia/cypera#${TOOL_REF}"
+          echo "CYPERA_DIR=$(tamias info cypera --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
+      - name: Install org loc config
+        env:
+          CONFIG_REF: ${{ inputs.config_ref }}
+        run: |
+          tamias install "${CONFIG_REF}"
+          echo "LOC_CONFIG_DIR=$(tamias info ktb-loc-config --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
+      - name: Parse loc config
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_ENV"
+          import os
+          import pathlib
+          import subprocess
+          import sys
+
+          try:
+              import yaml
+          except ModuleNotFoundError:
+              subprocess.run(
+                  [sys.executable, "-m", "pip", "install", "--quiet", "pyyaml"],
+                  check=True,
+              )
+              import yaml
+
+          cfg = (
+              yaml.safe_load(
+                  pathlib.Path(os.environ["LOC_CONFIG_DIR"], "loc.yaml").read_text()
+              )
+              or {}
+          )
+          for key in (
+              "org",
+              "repos",
+              "docs_repo",
+              "docs_outputs",
+              "docs_branch",
+              "pr_base",
+              "token_broker_url",
+          ):
+              value = cfg.get(key, cfg.get(key.upper()))
+              if value is None:
+                  continue
+              if isinstance(value, list):
+                  value = "\n".join(str(item) for item in value)
+              print(f"{key.upper()}<<__LOC_EOF__\n{value}\n__LOC_EOF__")
+          EOF
       - name: Read cypera config
         run: |
+          cd "$CYPERA_DIR"
           python3 - <<'EOF' >> "$GITHUB_ENV"
           import pathlib
           import tomllib
 
-          cfg = tomllib.loads(pathlib.Path("cypera/cypera.toml").read_text())
+          cfg = tomllib.loads(pathlib.Path("cypera.toml").read_text())
           print(f"TOKEI_VERSION={cfg['loc']['tokei_version']}")
           EOF
       - name: Install tokei
@@ -102,13 +139,11 @@ jobs:
           sudo install -m 0755 /tmp/tokei /usr/local/bin/tokei
       - name: Count lines of code
         env:
-          ORG: ${{ inputs.org }}
-          REPOS: ${{ inputs.repos }}
           LOC_READ_TOKEN: ${{ secrets.LOC_READ_TOKEN }}
           OUT: ${{ github.workspace }}/loc-results
-        run: bash cypera/tools/loc/count-loc.sh
+        run: bash "$CYPERA_DIR/tools/loc/count-loc.sh"
       - name: Summarize
-        run: python3 cypera/tools/loc/summarize-loc.py loc-results "${{ inputs.org }}" >> "$GITHUB_STEP_SUMMARY"
+        run: python3 "$CYPERA_DIR/tools/loc/summarize-loc.py" loc-results "$ORG" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v6
         with:
           name: loc-results
@@ -117,33 +152,79 @@ jobs:
 
   publish-docs:
     needs: count
-    if: inputs.docs_repo != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       DOCS_BOT_TOKEN: ${{ secrets.DOCS_BOT_TOKEN }}
       TOKEN_MINT_SECRET: ${{ secrets.TOKEN_MINT_SECRET }}
-      TOKEN_BROKER_URL: ${{ inputs.token_broker_url }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: 9aia/tamias/actions/setup-tamias@v0.1.0
         with:
-          repository: 9aia/cypera
-          path: cypera
-          ref: ${{ inputs.tool_ref }}
+          ref: ${{ inputs.tamias_ref }}
+      - name: Install org loc config
+        env:
+          CONFIG_REF: ${{ inputs.config_ref }}
+        run: |
+          tamias install "${CONFIG_REF}"
+          echo "LOC_CONFIG_DIR=$(tamias info ktb-loc-config --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
+      - name: Parse loc config
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_ENV"
+          import os
+          import pathlib
+          import subprocess
+          import sys
+
+          try:
+              import yaml
+          except ModuleNotFoundError:
+              subprocess.run(
+                  [sys.executable, "-m", "pip", "install", "--quiet", "pyyaml"],
+                  check=True,
+              )
+              import yaml
+
+          cfg = (
+              yaml.safe_load(
+                  pathlib.Path(os.environ["LOC_CONFIG_DIR"], "loc.yaml").read_text()
+              )
+              or {}
+          )
+          for key in (
+              "org",
+              "repos",
+              "docs_repo",
+              "docs_outputs",
+              "docs_branch",
+              "pr_base",
+              "token_broker_url",
+          ):
+              value = cfg.get(key, cfg.get(key.upper()))
+              if value is None:
+                  continue
+              if isinstance(value, list):
+                  value = "\n".join(str(item) for item in value)
+              print(f"{key.upper()}<<__LOC_EOF__\n{value}\n__LOC_EOF__")
+          EOF
+      - name: Install cypera tools
+        env:
+          TOOL_REF: ${{ inputs.tool_ref }}
+        run: |
+          tamias install "git:9aia/cypera#${TOOL_REF}"
+          echo "CYPERA_DIR=$(tamias info cypera --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v7
         with:
           name: loc-results
           path: loc-results
       - name: Regenerate docs pages
-        env:
-          DOCS_REPO: ${{ inputs.docs_repo }}
-          DOCS_OUTPUTS: ${{ inputs.docs_outputs }}
-          DOCS_BRANCH: ${{ inputs.docs_branch }}
-          PR_BASE: ${{ inputs.pr_base }}
         run: |
+          if [ -z "${DOCS_REPO:-}" ] || [ -z "${DOCS_OUTPUTS:-}" ]; then
+            echo "::notice::loc.yaml provides no docs_repo/docs_outputs — skipping docs update"
+            exit 0
+          fi
           # Prefer the token broker (short-lived app installation token);
           # fall back to a static DOCS_BOT_TOKEN when no broker is set.
-          if [ -n "$TOKEN_BROKER_URL" ] && [ -n "$TOKEN_MINT_SECRET" ]; then
+          if [ -n "${TOKEN_BROKER_URL:-}" ] && [ -n "${TOKEN_MINT_SECRET:-}" ]; then
             repo_name="${DOCS_REPO##*/}"
             BOT_TOKEN=$(curl -fsS -X POST "${TOKEN_BROKER_URL}/token" \
               -H "Authorization: Bearer ${TOKEN_MINT_SECRET}" \
@@ -154,10 +235,6 @@ jobs:
             BOT_TOKEN="$DOCS_BOT_TOKEN"
           else
             echo "::notice::no token source (token_broker_url+TOKEN_MINT_SECRET or DOCS_BOT_TOKEN) — skipping docs update"
-            exit 0
-          fi
-          if [ -z "$DOCS_OUTPUTS" ]; then
-            echo "::notice::docs_outputs empty — skipping docs update"
             exit 0
           fi
           git clone --quiet --depth 1 \
@@ -172,7 +249,7 @@ jobs:
           for spec in "${specs[@]}"; do
             render_specs+=("${spec%%=*}=docs/${spec#*=}")
           done
-          python3 cypera/tools/loc/render-loc-mdx.py loc-results/org.json "${render_specs[@]}"
+          python3 "$CYPERA_DIR/tools/loc/render-loc-mdx.py" loc-results/org.json "${render_specs[@]}"
           cd docs
           git config user.name "cypera-loc-bot"
           git config user.email "cypera-loc-bot@users.noreply.github.com"

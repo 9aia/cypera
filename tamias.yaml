@@ -2,15 +2,15 @@
 #
 # `tamias install git:9aia/cypera#<tag>` drops the whole toolbox
 # (tools/, reusable workflows, agent docs) into the local store as a
-# `files` pack — invoke scripts from the store payload path.
-# CI keeps its own path: the loc-org/loc-repo reusable workflows
-# `actions/checkout` this repo at a pinned tag; tamias is the
-# local/dev distribution channel, not the CI one.
+# `files` pack — invoke scripts from the store payload path. CI uses
+# the same channel: the loc-org/loc-repo reusable workflows install
+# this pack via tamias and run tools/loc/* from the payload dir.
 name: cypera
-version: "0.1.0"
+version: "0.2.0"
 type: files
 description: >-
   9aia toolbox — loc (tokei lines-of-code counting + MDX metrics
   renderer), reusable GitHub Actions workflows, and agent-facing
-  reference docs. Shipped as a files pack; no bins (the tools are
-  scripts run from the payload or from a CI checkout).
+  reference docs. Shipped as a files pack; installable from a git ref
+  (`git:9aia/cypera#<semver-tag>`) for both local use and CI; no bins
+  (the tools are scripts run from the payload).

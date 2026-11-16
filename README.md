@@ -138,5 +138,6 @@ Diátaxis site → GitHub Pages at `9aia.com/cypera`. Build with
 
 ## Releasing
 
-`scripts/release.sh` is an operator-run shim over `tarsi-serve
-release` (tag-only; see `tarsi.toml`).
+Releases are operator-run: `tarsi-serve release --dir . --yes`
+directly (tag-only; see `tarsi.toml`). The per-repo
+`scripts/release.sh` shims were removed org-wide.

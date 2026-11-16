@@ -56,7 +56,14 @@ def render(data, s, lang):
     ]
 
     repo_chart = [
-        {"name": repo, "files": r["files"], "lines": r["lines"], "code": r["code"]}
+        {
+            "name": repo,
+            "files": r["files"],
+            "lines": r["lines"],
+            "code": r["code"],
+            "comments": r["comments"],
+            "blanks": r["blanks"],
+        }
         for repo, r in sorted(data["repos"].items(), key=lambda kv: -kv[1]["code"])
     ]
     lang_chart = [
@@ -97,9 +104,7 @@ def render(data, s, lang):
     if data.get("errors"):
         parts += [f"**{s['skipped']}:** {', '.join(data['errors'])}", ""]
     parts += [
-        f"_{s['updated']}: {updated}. {s['footnote']}_",
-        "",
-        f"_{s['intro']}_",
+        f"_{s['updated']} {updated}._",
     ]
     return "\n".join(parts) + "\n"
 

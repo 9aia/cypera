@@ -7,9 +7,10 @@ Named for *Cypera*, the swift — docs that keep pace with the code.
 
 Every sibling repo's VitePress site regenerates the same three pages
 from the same sources: a **crate map** (workspace `Cargo.toml`s +
-`lib.rs` module docs), a **CLI reference** (each engine's
-`gen-cli-docs` verb — clap-markdown output), and a **config
-reference** (config-struct doc comments). cypera renders all three,
+`lib.rs` module docs), a **CLI reference** (a recursive `--help`
+walk — or a wrapped `gen-cli-docs` clap-markdown body via
+`--input`), and a **config reference** (config-struct doc comments).
+cypera renders all three,
 once, for every repo — killing the per-repo script drift.
 
 ## Install

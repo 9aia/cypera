@@ -48,7 +48,7 @@ on:
         description: Semver tag of 9aia/tamias used by the setup-tamias action
         required: false
         type: string
-        default: v0.1.5
+        default: tamias-v0.2.0
     secrets:
       DOCS_BOT_TOKEN:
         description: PAT/App token with contents+pull-requests write on docs_repo (fallback when token_broker_url is unset)
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: 9aia/tamias/actions/setup-tamias@v0.1.5
+      - uses: 9aia/tamias/actions/setup-tamias@tamias-v0.2.0
         with:
           ref: ${{ inputs.tamias_ref }}
       - name: Install cypera tools
@@ -167,7 +167,7 @@ jobs:
       DOCS_BOT_TOKEN: ${{ secrets.DOCS_BOT_TOKEN }}
       TOKEN_MINT_SECRET: ${{ secrets.TOKEN_MINT_SECRET }}
     steps:
-      - uses: 9aia/tamias/actions/setup-tamias@v0.1.5
+      - uses: 9aia/tamias/actions/setup-tamias@tamias-v0.2.0
         with:
           ref: ${{ inputs.tamias_ref }}
       - name: Install org loc config

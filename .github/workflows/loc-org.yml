@@ -5,22 +5,35 @@ name: loc-org
 # Called as a job from an org-level workflow (e.g. ktbhealth/.github):
 #
 #   loc:
-#     uses: 9aia/cypera/.github/workflows/loc-org.yml@v0.2.0
+#     uses: 9aia/cypera/.github/workflows/loc-org.yml@v0.2.4
 #     with:
-#       config_ref: git:ktbhealth/.github//packs/loc#main
-#     secrets: inherit
+#       config_ref: 9aia:ktb-loc-config@0.1.0
+#     secrets:
+#       TAMIAS_REGISTRY_TOKEN: ${{ secrets.TAMIAS_REGISTRY_TOKEN }}
 #
 # Distribution is via tamias, not actions/checkout:
 #   - 9aia/tamias/actions/setup-tamias installs the tamias CLI
 #     (version pinned by the `tamias_ref` input).
-#   - `tamias install git:9aia/cypera#<tool_ref>` installs this repo as a
-#     `type: files` pack; tools run from the store payload dir
-#     (`tamias info cypera-toolbox --json` → `dir`).
+#   - `tamias install <tool_ref>` installs the toolbox `type: files`
+#     pack; tools run from the store payload dir
+#     (`tamias info cypera-toolbox --json` → `dir`). `tool_ref` is a
+#     full tamias ref — org-registry refs like
+#     `9aia:cypera-toolbox@0.2.1` by default, git refs still work.
 #   - `tamias install <config_ref>` installs the caller org's loc config
 #     pack — an org `type: files` config pack containing a
 #     `loc.yaml` with keys: org, repos, docs_repo, docs_outputs,
 #     docs_branch, pr_base, token_broker_url (docs_* may be omitted to
-#     skip the docs job at runtime).
+#     skip the docs job at runtime). Free-form: registry refs
+#     (`9aia:ktb-loc-config@0.1.0`) or git refs
+#     (`git:ktbhealth/.github//packs/loc#main`) both work.
+#
+# Registry refs (`<label>:<name>@<ver>`) resolve against a tamias
+# config the workflow writes to ~/.config/tamias/tamias.yml — the
+# runner has no user config, so the `9aia` label (org registry at
+# https://tamias.9aia.com) is declared inline. Registry auth needs
+# the TAMIAS_REGISTRY_TOKEN secret mapped through `secrets:` (the
+# token value lives sealed in the secrets-9aia pack); without it,
+# only git/fs refs install.
 #
 # Job `count` clones every repo in `repos`, counts with the shared
 # exclude list (cypera.toml inside the installed pack), writes a job
@@ -40,10 +53,13 @@ on:
         required: true
         type: string
       tool_ref:
-        description: Semver tag of 9aia/cypera to install tools/loc from
+        description: >-
+          Tamias ref to the toolbox pack — org-registry refs like
+          `9aia:cypera-toolbox@0.2.1` or git refs like
+          `git:9aia/cypera#v0.2.2`
         required: false
         type: string
-        default: v0.2.2
+        default: 9aia:cypera-toolbox@0.2.1
       tamias_ref:
         description: Semver tag of 9aia/tamias used by the setup-tamias action
         required: false
@@ -59,6 +75,9 @@ on:
       LOC_READ_TOKEN:
         description: PAT with read access to private repos in `repos`
         required: false
+      TAMIAS_REGISTRY_TOKEN:
+        description: Bearer token for the org tamias registry (needed when tool_ref/config_ref are `<label>:` registry refs)
+        required: false
 
 permissions:
   contents: read
@@ -71,15 +90,27 @@ jobs:
       - uses: 9aia/tamias/actions/setup-tamias@tamias-v0.2.0
         with:
           ref: ${{ inputs.tamias_ref }}
+      - name: Configure tamias org registry
+        run: |
+          mkdir -p "$HOME/.config/tamias"
+          cat > "$HOME/.config/tamias/tamias.yml" <<'EOF'
+          registries:
+            "9aia":
+              kind: cf
+              url: https://tamias.9aia.com
+              token_env: TAMIAS_REGISTRY_TOKEN
+          EOF
       - name: Install cypera tools
         env:
           TOOL_REF: ${{ inputs.tool_ref }}
+          TAMIAS_REGISTRY_TOKEN: ${{ secrets.TAMIAS_REGISTRY_TOKEN }}
         run: |
-          tamias install "git:9aia/cypera#${TOOL_REF}"
+          tamias install "${TOOL_REF}"
           echo "CYPERA_DIR=$(tamias info cypera-toolbox --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
       - name: Install org loc config
         env:
           CONFIG_REF: ${{ inputs.config_ref }}
+          TAMIAS_REGISTRY_TOKEN: ${{ secrets.TAMIAS_REGISTRY_TOKEN }}
         run: |
           tamias install "${CONFIG_REF}"
           LOC_CONFIG_DIR=$(tamias list --json | python3 -c '
@@ -170,9 +201,20 @@ jobs:
       - uses: 9aia/tamias/actions/setup-tamias@tamias-v0.2.0
         with:
           ref: ${{ inputs.tamias_ref }}
+      - name: Configure tamias org registry
+        run: |
+          mkdir -p "$HOME/.config/tamias"
+          cat > "$HOME/.config/tamias/tamias.yml" <<'EOF'
+          registries:
+            "9aia":
+              kind: cf
+              url: https://tamias.9aia.com
+              token_env: TAMIAS_REGISTRY_TOKEN
+          EOF
       - name: Install org loc config
         env:
           CONFIG_REF: ${{ inputs.config_ref }}
+          TAMIAS_REGISTRY_TOKEN: ${{ secrets.TAMIAS_REGISTRY_TOKEN }}
         run: |
           tamias install "${CONFIG_REF}"
           LOC_CONFIG_DIR=$(tamias list --json | python3 -c '
@@ -227,8 +269,9 @@ jobs:
       - name: Install cypera tools
         env:
           TOOL_REF: ${{ inputs.tool_ref }}
+          TAMIAS_REGISTRY_TOKEN: ${{ secrets.TAMIAS_REGISTRY_TOKEN }}
         run: |
-          tamias install "git:9aia/cypera#${TOOL_REF}"
+          tamias install "${TOOL_REF}"
           echo "CYPERA_DIR=$(tamias info cypera-toolbox --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["dir"])')" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v7
         with:

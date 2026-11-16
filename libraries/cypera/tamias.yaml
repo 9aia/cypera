@@ -16,7 +16,7 @@
 # `tools/bin/` payload bin: every cypera verb is bounded, so the
 # whole surface rides the same shim.
 name: cypera
-version: "0.1.0"
+version: "0.1.1"
 type: files
 description: >-
   Reusable documentation/reference generation for the 9aia org —

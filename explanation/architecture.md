@@ -57,12 +57,12 @@ neighbors it deliberately doesn't.
 
 ## Where it sits
 
-In the org's layering — **tamias** (package & content manager) →
-**engines** (myco, kuda, mimus, sepia, sturn, hypha, tarsi,
-cicada, scarab, peregrin) → **orchestration** (peregrin) →
-**surfaces** (pavo, docs sites).
+In the org's layering — **delivery** (tamias, scarab, tarsi,
+bupha) → **memory** (myco, kuda, sturn, hypha) → **process**
+(cuora, mimus, cicada, lasius, sepia) → **agency** (peregrin,
+pavo).
 
-Cypera sits *under* the surfaces: every engine's docs site
+Cypera sits *under* every layer: each repo's docs site
 regenerates its reference pages through cypera, and `cypera check`
 is the gate that keeps the org's docs contract honest. It is a
 library-grade tool consumed by repos, not an engine the org runs.

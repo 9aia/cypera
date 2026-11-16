@@ -43,3 +43,12 @@ self-upgrade for its own packs.
 - Replacing the myco/kuda/sturn content types — they already ride
   tamias.
 - Changing the pinned-tag CI contract unilaterally.
+
+## Progress (2026-11-16)
+
+Shipped: `actions/setup-tamias` composite action (tamias v0.1.5);
+`loc-org`/`loc-repo` install `cypera-toolbox` + org config packs via
+tamias (cypera v0.2.x); ktbhealth + 9aia orgs on thin callers with
+`packs/loc` config; `loc-v*` tags deleted, all semver. P-002 tracks
+the coverage invariant + doctor check. Still open: bins[] surface,
+registry publish vs git tags.

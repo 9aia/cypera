@@ -58,11 +58,11 @@ neighbors it deliberately doesn't.
 ## Where it sits
 
 In the org's layering — **delivery** (tamias, scarab, tarsi,
-bupha) → **memory** (myco, kuda, sturn, hypha) → **process**
-(cuora, mimus, cicada, lasius, sepia) → **agency** (peregrin,
-pavo).
+bupha, hypha) → **memory** (myco, kuda) → **process** (sturn,
+cuora, mimus, cicada, lasius, sepia, peregrin) → **interface**
+(pavo).
 
 Cypera sits *under* every layer: each repo's docs site
 regenerates its reference pages through cypera, and `cypera check`
 is the gate that keeps the org's docs contract honest. It is a
-library-grade tool consumed by repos, not an engine the org runs.
+library-grade tool consumed by repos, not an organism the org runs.

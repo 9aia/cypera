@@ -39,10 +39,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ secrets.LOC_READ_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: 9aia/cypera
           path: cypera
@@ -95,7 +95,7 @@ jobs:
           )
           print("\n".join(lines))
           EOF
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: loc-${{ inputs.repo_name }}
           path: loc-results/*.json

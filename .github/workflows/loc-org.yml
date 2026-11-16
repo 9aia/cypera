@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: 9aia/cypera
           path: cypera
@@ -109,7 +109,7 @@ jobs:
         run: bash cypera/tools/loc/count-loc.sh
       - name: Summarize
         run: python3 cypera/tools/loc/summarize-loc.py loc-results "${{ inputs.org }}" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: loc-results
           path: loc-results/*.json
@@ -125,12 +125,12 @@ jobs:
       TOKEN_MINT_SECRET: ${{ secrets.TOKEN_MINT_SECRET }}
       TOKEN_BROKER_URL: ${{ inputs.token_broker_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: 9aia/cypera
           path: cypera
           ref: ${{ inputs.tool_ref }}
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: loc-results
           path: loc-results

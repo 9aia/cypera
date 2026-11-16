@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# cypera-loc — command surface for the loc toolbox.
+#
+# Deployed by tamias as a `bins[].payload` entry: the installed bin is a
+# symlink into this pack's store payload (`tools/bin/cypera-loc`), so
+# resolving $0 lands two levels under the pack root where `tools/loc/`
+# lives. Subcommands map 1:1 onto the toolbox scripts — no tamias call
+# needed at runtime, and the bin-alias retarget keeps the resolved path
+# correct across upgrades.
+#
+# Usage:
+#   cypera-loc count [args…]      → tools/loc/count-loc.sh
+#   cypera-loc summarize [args…]  → tools/loc/summarize-loc.py
+#   cypera-loc render [args…]     → tools/loc/render-loc-mdx.py
+set -euo pipefail
+
+# Resolve symlinks: $0 may be the bin-dir link (or a link to it).
+SRC="$0"
+while [ -h "$SRC" ]; do
+  DIR="$(cd -P "$(dirname -- "$SRC")" >/dev/null 2>&1 && pwd)"
+  SRC="$(readlink "$SRC")"
+  case "$SRC" in
+    /*) ;;
+    *) SRC="$DIR/$SRC" ;;
+  esac
+done
+ROOT="$(cd "$(dirname -- "$SRC")/../.." && pwd)"
+
+usage() {
+  cat <<'EOF'
+cypera-loc — 9aia loc toolbox (lines-of-code counting + MDX renderer)
+
+Usage: cypera-loc <command> [args…]
+
+Commands:
+  count       Count LOC with tokei (org or single-repo mode;
+              see tools/loc/count-loc.sh header for env vars)
+  summarize   Merge per-repo tokei JSON into one org report
+              (<results-dir> <org-name>)
+  render      Render codebase-metrics MDX pages from org.json
+              (<org.json> <locale>=<out.mdx>…)
+
+Run 'cypera-loc <command> --help' for the underlying tool's usage.
+EOF
+}
+
+cmd="${1:-}"
+[ $# -gt 0 ] && shift || true
+case "$cmd" in
+  count) exec "$ROOT/tools/loc/count-loc.sh" "$@" ;;
+  summarize | summary) exec "$ROOT/tools/loc/summarize-loc.py" "$@" ;;
+  render) exec "$ROOT/tools/loc/render-loc-mdx.py" "$@" ;;
+  help | --help | -h) usage ;;
+  *)
+    [ -n "$cmd" ] && echo "cypera-loc: unknown command '$cmd'" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

@@ -1,0 +1,170 @@
+name: loc-org
+
+# Reusable org-wide lines-of-code report (tokei) + optional docs refresh.
+#
+# Called as a job from an org-level workflow (e.g. ktbhealth/.github):
+#
+#   loc:
+#     uses: 9aia/cypera/.github/workflows/loc-org.yml@<ref>
+#     with:
+#       org: ktbhealth
+#       repos: product docs ui ...
+#       docs_repo: ktbhealth/docs
+#       docs_outputs: |
+#         en=content/docs/en/developers/root/reference/codebase-metrics.mdx
+#         pt-BR=content/docs/pt-BR/developers/root/reference/codebase-metrics.mdx
+#     secrets: inherit
+#
+# Job `count` shallow-clones every repo in `repos`, counts with the shared
+# exclude list, writes a job summary and uploads a loc-results artifact.
+# Job `publish-docs` (only when docs_repo + DOCS_BOT_TOKEN are provided)
+# regenerates the metrics pages and opens/updates a PR on docs_branch.
+
+on:
+  workflow_call:
+    inputs:
+      org:
+        description: GitHub org/user that owns the repos
+        required: true
+        type: string
+      repos:
+        description: Space-separated repository names to count
+        required: true
+        type: string
+      docs_repo:
+        description: "owner/name of the docs repo to update (empty = skip)"
+        required: false
+        type: string
+        default: ""
+      docs_outputs:
+        description: "One '<locale>=<repo-relative-path.mdx>' per line"
+        required: false
+        type: string
+        default: ""
+      docs_branch:
+        description: Branch name for the docs update PR
+        required: false
+        type: string
+        default: loc-metrics
+      pr_base:
+        description: Base branch for the docs PR
+        required: false
+        type: string
+        default: main
+      tool_ref:
+        description: Ref of 9aia/cypera to take tools/loc from
+        required: false
+        type: string
+        default: main
+    secrets:
+      DOCS_BOT_TOKEN:
+        description: PAT/App token with contents+pull-requests write on docs_repo
+        required: false
+      LOC_READ_TOKEN:
+        description: PAT with read access to private repos in `repos`
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  count:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: 9aia/cypera
+          path: cypera
+          ref: ${{ inputs.tool_ref }}
+      - name: Read cypera config
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_ENV"
+          import pathlib
+          import tomllib
+
+          cfg = tomllib.loads(pathlib.Path("cypera/cypera.toml").read_text())
+          print(f"TOKEI_VERSION={cfg['loc']['tokei_version']}")
+          EOF
+      - name: Install tokei
+        run: |
+          curl -fsSL "https://github.com/XAMPPRocky/tokei/releases/download/${TOKEI_VERSION}/tokei-x86_64-unknown-linux-gnu.tar.gz" -o /tmp/tokei.tar.gz
+          tar -xzf /tmp/tokei.tar.gz -C /tmp tokei
+          sudo install -m 0755 /tmp/tokei /usr/local/bin/tokei
+      - name: Count lines of code
+        env:
+          ORG: ${{ inputs.org }}
+          REPOS: ${{ inputs.repos }}
+          LOC_READ_TOKEN: ${{ secrets.LOC_READ_TOKEN }}
+          OUT: ${{ github.workspace }}/loc-results
+        run: bash cypera/tools/loc/count-loc.sh
+      - name: Summarize
+        run: python3 cypera/tools/loc/summarize-loc.py loc-results "${{ inputs.org }}" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: loc-results
+          path: loc-results/*.json
+          retention-days: 90
+
+  publish-docs:
+    needs: count
+    if: inputs.docs_repo != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DOCS_BOT_TOKEN: ${{ secrets.DOCS_BOT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: 9aia/cypera
+          path: cypera
+          ref: ${{ inputs.tool_ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: loc-results
+          path: loc-results
+      - name: Regenerate docs pages
+        env:
+          DOCS_REPO: ${{ inputs.docs_repo }}
+          DOCS_OUTPUTS: ${{ inputs.docs_outputs }}
+          DOCS_BRANCH: ${{ inputs.docs_branch }}
+          PR_BASE: ${{ inputs.pr_base }}
+        run: |
+          if [ -z "$DOCS_BOT_TOKEN" ]; then
+            echo "::notice::DOCS_BOT_TOKEN not set — skipping docs update"
+            exit 0
+          fi
+          if [ -z "$DOCS_OUTPUTS" ]; then
+            echo "::notice::docs_outputs empty — skipping docs update"
+            exit 0
+          fi
+          git clone --quiet --depth 1 \
+            "https://x-access-token:${DOCS_BOT_TOKEN}@github.com/${DOCS_REPO}.git" docs
+          specs=()
+          while IFS= read -r line; do
+            [ -n "$line" ] && specs+=("$line")
+          done <<< "$DOCS_OUTPUTS"
+          # render-loc-mdx.py wants locale=path pairs; resolve them
+          # against the docs checkout.
+          render_specs=()
+          for spec in "${specs[@]}"; do
+            render_specs+=("${spec%%=*}=docs/${spec#*=}")
+          done
+          python3 cypera/tools/loc/render-loc-mdx.py loc-results/org.json "${render_specs[@]}"
+          cd docs
+          git config user.name "cypera-loc-bot"
+          git config user.email "cypera-loc-bot@users.noreply.github.com"
+          git checkout -b "$DOCS_BRANCH"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Docs already up to date"
+            exit 0
+          fi
+          git commit -m "docs: refresh codebase metrics"
+          git push --force-with-lease origin "$DOCS_BRANCH"
+          export GH_TOKEN="$DOCS_BOT_TOKEN"
+          if ! gh pr list --repo "$DOCS_REPO" --head "$DOCS_BRANCH" --state open --json number --jq '.[0].number' | grep -q .; then
+            gh pr create --repo "$DOCS_REPO" --base "$PR_BASE" --head "$DOCS_BRANCH" \
+              --title "docs: refresh codebase metrics" \
+              --body "Auto-generated by the \`loc-org\` reusable workflow (9aia/cypera). Review the numbers, not the prose."
+          fi

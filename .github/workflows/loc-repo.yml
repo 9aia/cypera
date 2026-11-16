@@ -1,0 +1,102 @@
+name: loc-repo
+
+# Reusable per-repository lines-of-code report (tokei).
+#
+# Called as a job from any repo's workflow:
+#
+#   metrics:
+#     uses: 9aia/cypera/.github/workflows/loc-repo.yml@<ref>
+#     with:
+#       repo_name: product
+#
+# Checks out the CALLER's repository (default actions/checkout behavior in
+# reusable workflows), counts it with the shared exclude list, writes a
+# job-summary table and uploads a loc-<repo> JSON artifact. Informational
+# only — it never gates.
+
+on:
+  workflow_call:
+    inputs:
+      repo_name:
+        description: Name used for the output JSON/artifact (usually the repo name)
+        required: true
+        type: string
+      tool_ref:
+        description: Ref of 9aia/cypera to take tools/loc from
+        required: false
+        type: string
+        default: main
+    secrets:
+      LOC_READ_TOKEN:
+        description: PAT with read access — only needed if the caller repo is private
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.LOC_READ_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: 9aia/cypera
+          path: cypera
+          ref: ${{ inputs.tool_ref }}
+      - name: Read cypera config
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_ENV"
+          import pathlib
+          import tomllib
+
+          cfg = tomllib.loads(pathlib.Path("cypera/cypera.toml").read_text())
+          print(f"TOKEI_VERSION={cfg['loc']['tokei_version']}")
+          EOF
+      - name: Install tokei
+        run: |
+          curl -fsSL "https://github.com/XAMPPRocky/tokei/releases/download/${TOKEI_VERSION}/tokei-x86_64-unknown-linux-gnu.tar.gz" -o /tmp/tokei.tar.gz
+          tar -xzf /tmp/tokei.tar.gz -C /tmp tokei
+          sudo install -m 0755 /tmp/tokei /usr/local/bin/tokei
+      - name: Count lines
+        env:
+          SINGLE_REPO_NAME: ${{ inputs.repo_name }}
+          LOC_READ_TOKEN: ${{ secrets.LOC_READ_TOKEN }}
+          OUT: ${{ github.workspace }}/loc-results
+        run: bash cypera/tools/loc/count-loc.sh
+      - name: Write job summary
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+
+          d = json.load(open("loc-results/${{ inputs.repo_name }}.json"))
+          lines = [
+              "## Lines of code (tokei)",
+              "",
+              "| Language | Files | Lines | Code | Comments | Blanks |",
+              "|---|---:|---:|---:|---:|---:|",
+          ]
+          for lang, v in sorted(d.items(), key=lambda kv: -kv[1]["code"]):
+              if lang == "Total":
+                  continue
+              n = v["code"] + v["comments"] + v["blanks"]
+              lines.append(
+                  f"| {lang} | {len(v.get('reports', []))} | {n:,} | "
+                  f"{v['code']:,} | {v['comments']:,} | {v['blanks']:,} |"
+              )
+          t = d["Total"]
+          n = t["code"] + t["comments"] + t["blanks"]
+          lines.append(
+              f"| **Total** | **{len(t.get('reports', []))}** | **{n:,}** | "
+              f"**{t['code']:,}** | **{t['comments']:,}** | **{t['blanks']:,}** |"
+          )
+          print("\n".join(lines))
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: loc-${{ inputs.repo_name }}
+          path: loc-results/*.json
+          retention-days: 30

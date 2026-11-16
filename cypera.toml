@@ -1,0 +1,34 @@
+# Shared configuration for cypera tools.
+# Consumed by tools/loc/* and the loc-repo/loc-org reusable workflows.
+# Workflow inputs (repos, docs paths, secrets) stay per-caller — this file
+# only holds tool-level defaults.
+
+[loc]
+# tokei release the workflows install (binary asset tag).
+tokei_version = "v12.1.2"
+
+# Exclude patterns — each becomes one --exclude flag (tokei does not
+# split comma-separated values). Keep this the single source of truth;
+# count-loc.sh falls back to a built-in copy when the file is absent.
+excludes = [
+  "node_modules",
+  ".git",
+  "coverage",
+  "dist",
+  ".output",
+  ".wrangler",
+  ".alchemy",
+  ".turbo",
+  ".vite",
+  ".vercel",
+  ".next",
+  "storybook-static",
+  "paraglide",
+  "drizzle",
+  "route-types.d.ts",
+  "routeTree.gen.ts",
+  "bun.lock",
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+]

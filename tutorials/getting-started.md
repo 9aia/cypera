@@ -26,8 +26,8 @@ Requires a stable Rust toolchain; no other runtime dependencies.
 | Generator | Source | Output |
 | --- | --- | --- |
 | `cypera gen crate-map` | workspace + member `Cargo.toml`s, `src/lib.rs`/`main.rs` scans | crate/layer/purpose table + per-crate module sections |
-| `cypera gen cli` | a sibling's `gen-cli-docs` output (clap-markdown) | wrapped CLI reference page |
-| `cypera gen config` | `pub struct` doc comments in Rust sources | config field tables |
+| `cypera gen cli` | a binary's recursive `--help` walk (or wrapped `gen-cli-docs` markdown via `--input`) | CLI reference page |
+| `cypera gen config` | `pub struct` doc comments in Rust sources, or the curated `[config]` spec in `cypera.toml` | config field tables |
 
 All three print markdown to stdout by default; `--out <file>`
 writes a page (or splices a table — see below).
@@ -38,11 +38,17 @@ writes a page (or splices a table — see below).
 # crate map for any repo — dogfood on cypera itself
 ./target/debug/cypera gen crate-map --repo .
 
-# CLI reference — pipe a sibling engine's gen-cli-docs verb
-myco gen-cli-docs | cypera gen cli --title "myco — commands"
+# CLI reference — the --help walk; the command spec comes from
+# [cli] in the target repo's cypera.toml (or --package/--bin/--prefix)
+cypera gen cli --repo /path/to/myco
 
-# config reference — point at the config struct sources
-cypera gen config --file crates/myco-core/src/config.rs
+# …or wrap a gen-cli-docs markdown body instead
+myco gen-cli-docs | cypera gen cli --input - --title "myco — commands"
+
+# config reference — curated [config] spec via --repo, or scan
+# struct sources directly (legacy mode)
+cypera gen config --repo /path/to/myco
+cypera gen config --file crates/myco-core/src/lib.rs
 ```
 
 ## Where the output goes

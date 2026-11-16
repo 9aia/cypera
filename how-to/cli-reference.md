@@ -31,14 +31,15 @@ their clap tree as markdown (via `clap-markdown`). cypera wraps that
 output in a reference page — it does not parse clap itself:
 
 ```bash
-myco gen-cli-docs | cypera gen cli \
+myco gen-cli-docs | cypera gen cli --input - \
   --title "myco — commands" \
   --out docs/reference/commands.md
 ```
 
-From a file instead of stdin: `cypera gen cli --input file.md …`.
-`--input` defaults to `-` (stdin); `--title` defaults to `Commands`.
-Wrap mode is for repos not yet migrated to `[cli]` help-walk.
+`--input` is what selects wrap mode — pass `-` for stdin or a
+file path; without it `gen cli` runs the `--help` walk instead.
+`--title` defaults to `Commands`. Wrap mode is for repos not yet
+migrated to `[cli]` help-walk.
 
 ## What the walked page looks like
 

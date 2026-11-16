@@ -52,3 +52,11 @@ tamias (cypera v0.2.x); ktbhealth + 9aia orgs on thin callers with
 `packs/loc` config; `loc-v*` tags deleted, all semver. P-002 tracks
 the coverage invariant + doctor check. Still open: bins[] surface,
 registry publish vs git tags.
+
+## Progress (2026-11-16, cont.)
+
+bins[] surface shipped: `cypera-loc` payload bin (dispatcher over
+count/summarize/render) via `bins[].payload` → `tools/bin/cypera-loc`
+(commit 3d55828, pack version 0.2.1). Verified: `tamias bin list`
+shows it deployed; `cypera-loc count|summarize|render` work. A
+compiled cypera-driver looks unnecessary for script tooling.

@@ -278,6 +278,10 @@ jobs:
             exit 0
           fi
           git commit -m "docs: refresh codebase metrics"
+          # The shallow clone never fetched $DOCS_BRANCH, so lease has no
+          # remote-tracking ref to compare ("stale info"). Fetch it first.
+          git fetch --quiet --depth 1 \
+            origin "+refs/heads/${DOCS_BRANCH}:refs/remotes/origin/${DOCS_BRANCH}" || true
           git push --force-with-lease origin "$DOCS_BRANCH"
           export GH_TOKEN="$BOT_TOKEN"
           if ! gh pr list --repo "$DOCS_REPO" --head "$DOCS_BRANCH" --state open --json number --jq '.[0].number' | grep -q .; then

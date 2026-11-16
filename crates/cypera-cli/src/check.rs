@@ -354,9 +354,9 @@ fn changelog_rule(root: &Path) -> Rule {
 
 /// Scan prose sources (`.md`/`.txt`) for `v?\d+\.\d+\.\d+`
 /// outside fenced code blocks, inline code spans, raw HTML
-/// `<script>`/`<style>` blocks, and skipped dirs — versions belong
-/// in manifests/lockfiles, not prose. Source files are out of
-/// scope: semver literals in code and doc comments are legitimate.
+/// `<script>`/`<style>`/`<svg>` blocks, and skipped dirs — versions
+/// belong in manifests/lockfiles, not prose. Source files are out
+/// of scope: semver literals in code and doc comments are legitimate.
 fn version_prose_rule(root: &Path) -> Result<Rule> {
     const NAME: &str = "no-version-in-prose";
     let mut hits = Vec::new();
@@ -377,9 +377,9 @@ fn version_prose_rule(root: &Path) -> Result<Rule> {
         if fname.starts_with("changelog") {
             return;
         }
-        // `<script>`/`<style>` blocks are code, not prose — VitePress
-        // markdown allows raw HTML/JS (SVG path floats look like
-        // semver to the scanner).
+        // `<script>`/`<style>`/`<svg>` blocks are code, not prose —
+        // VitePress markdown allows raw HTML (JS/CSS and SVG path
+        // floats look like semver to the scanner).
         let text = mask_html_blocks(&text);
         let mut in_fence = false;
         for (i, line) in text.lines().enumerate() {
@@ -491,38 +491,40 @@ fn mask_urls(line: &str) -> String {
     out
 }
 
-/// Blank out the *contents* of raw HTML `<script>`/`<style>`
+/// Blank out the *contents* of raw HTML `<script>`/`<style>`/`<svg>`
 /// blocks (the tags themselves stay). Markdown allows inline HTML,
-/// and VitePress pages carry JS/CSS whose numeric literals are not
-/// prose claims. Newlines are preserved so line numbers hold; an
-/// unclosed block masks to EOF.
+/// and VitePress pages carry JS/CSS/SVG whose numeric literals are
+/// not prose claims — SVG path `d=` data in particular produces
+/// semver-looking digit runs. Newlines are preserved so line
+/// numbers hold; an unclosed block masks to EOF.
 fn mask_html_blocks(text: &str) -> String {
     let lower = text.to_lowercase();
     let bytes = text.as_bytes();
     let mut masked = vec![false; text.len()];
     let mut pos = 0usize;
     while pos < bytes.len() {
-        // Next `<script`/`<style` open tag at or after `pos`.
-        let mut found: Option<(usize, &'static str)> = None;
-        for (tag, close) in [("<script", "</script"), ("<style", "</style")] {
+        // Next `<script`/`<style`/`<svg` open tag at or after `pos`.
+        let mut found: Option<(usize, &'static str, &'static str)> = None;
+        for (tag, close) in [
+            ("<script", "</script"),
+            ("<style", "</style"),
+            ("<svg", "</svg"),
+        ] {
             if let Some(off) = lower[pos..].find(tag) {
                 let start = pos + off;
                 // Tag-name boundary: next char must end the name.
                 let next = bytes.get(start + tag.len()).copied();
                 if next.is_some_and(|c| c.is_ascii_whitespace() || c == b'>' || c == b'/')
-                    && found.is_none_or(|(s, _)| start < s)
+                    && found.is_none_or(|(s, _, _)| start < s)
                 {
-                    found = Some((start, close));
+                    found = Some((start, tag, close));
                 }
             }
         }
-        let Some((open, close)) = found else { break };
-        let open_end = open
-            + if lower[open..].starts_with("<script") {
-                "<script".len()
-            } else {
-                "<style".len()
-            };
+        let Some((open, tag, close)) = found else {
+            break;
+        };
+        let open_end = open + tag.len();
         // Find the matching close tag; mask up to (not incl.) it.
         let close_at = lower[open_end..]
             .find(close)
@@ -1305,6 +1307,18 @@ mod tests {
         // still carries its version.
         assert!(!lines[3].contains("1.733"));
         assert!(lines[6].contains("3.1.4"));
+    }
+
+    #[test]
+    fn svg_block_is_masked() {
+        // Theme-generated index pages carry lucide icons as inline
+        // `<svg>` markup (often inside frontmatter `icon:` strings);
+        // path `d=` floats parse as semver-looking digit runs.
+        let text = "---\nicon: '<svg viewBox=\"0 0 24 24\"><path d=\"M1.733.656 2.5 1.623.312\"/></svg>'\n---\n\nReleased in 3.1.4.\n";
+        let masked = mask_html_blocks(text);
+        let lines: Vec<&str> = masked.lines().collect();
+        assert!(!lines[1].contains("1.733"));
+        assert!(lines[4].contains("3.1.4"));
     }
 
     #[test]

@@ -17,7 +17,8 @@ name: loc-org
 #
 # Job `count` shallow-clones every repo in `repos`, counts with the shared
 # exclude list, writes a job summary and uploads a loc-results artifact.
-# Job `publish-docs` (only when docs_repo + DOCS_BOT_TOKEN are provided)
+# Job `publish-docs` (only when docs_repo + a token source — token broker
+# or DOCS_BOT_TOKEN — are provided)
 # regenerates the metrics pages and opens/updates a PR on docs_branch.
 
 on:
@@ -51,6 +52,11 @@ on:
         required: false
         type: string
         default: main
+      token_broker_url:
+        description: "Optional token-broker base URL (e.g. https://ci.example.workers.dev) — mints a short-lived installation token for docs_repo instead of needing DOCS_BOT_TOKEN"
+        required: false
+        type: string
+        default: ""
       tool_ref:
         description: Ref of 9aia/cypera to take tools/loc from
         required: false
@@ -58,7 +64,10 @@ on:
         default: main
     secrets:
       DOCS_BOT_TOKEN:
-        description: PAT/App token with contents+pull-requests write on docs_repo
+        description: PAT/App token with contents+pull-requests write on docs_repo (fallback when token_broker_url is unset)
+        required: false
+      TOKEN_MINT_SECRET:
+        description: Bearer secret for the token broker (used with token_broker_url)
         required: false
       LOC_READ_TOKEN:
         description: PAT with read access to private repos in `repos`
@@ -113,6 +122,8 @@ jobs:
     timeout-minutes: 10
     env:
       DOCS_BOT_TOKEN: ${{ secrets.DOCS_BOT_TOKEN }}
+      TOKEN_MINT_SECRET: ${{ secrets.TOKEN_MINT_SECRET }}
+      TOKEN_BROKER_URL: ${{ inputs.token_broker_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -130,8 +141,19 @@ jobs:
           DOCS_BRANCH: ${{ inputs.docs_branch }}
           PR_BASE: ${{ inputs.pr_base }}
         run: |
-          if [ -z "$DOCS_BOT_TOKEN" ]; then
-            echo "::notice::DOCS_BOT_TOKEN not set — skipping docs update"
+          # Prefer the token broker (short-lived app installation token);
+          # fall back to a static DOCS_BOT_TOKEN when no broker is set.
+          if [ -n "$TOKEN_BROKER_URL" ] && [ -n "$TOKEN_MINT_SECRET" ]; then
+            repo_name="${DOCS_REPO##*/}"
+            BOT_TOKEN=$(curl -fsS -X POST "${TOKEN_BROKER_URL}/token" \
+              -H "Authorization: Bearer ${TOKEN_MINT_SECRET}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"repositories\":[\"${repo_name}\"]}" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+          elif [ -n "$DOCS_BOT_TOKEN" ]; then
+            BOT_TOKEN="$DOCS_BOT_TOKEN"
+          else
+            echo "::notice::no token source (token_broker_url+TOKEN_MINT_SECRET or DOCS_BOT_TOKEN) — skipping docs update"
             exit 0
           fi
           if [ -z "$DOCS_OUTPUTS" ]; then
@@ -139,7 +161,7 @@ jobs:
             exit 0
           fi
           git clone --quiet --depth 1 \
-            "https://x-access-token:${DOCS_BOT_TOKEN}@github.com/${DOCS_REPO}.git" docs
+            "https://x-access-token:${BOT_TOKEN}@github.com/${DOCS_REPO}.git" docs
           specs=()
           while IFS= read -r line; do
             [ -n "$line" ] && specs+=("$line")
@@ -162,7 +184,7 @@ jobs:
           fi
           git commit -m "docs: refresh codebase metrics"
           git push --force-with-lease origin "$DOCS_BRANCH"
-          export GH_TOKEN="$DOCS_BOT_TOKEN"
+          export GH_TOKEN="$BOT_TOKEN"
           if ! gh pr list --repo "$DOCS_REPO" --head "$DOCS_BRANCH" --state open --json number --jq '.[0].number' | grep -q .; then
             gh pr create --repo "$DOCS_REPO" --base "$PR_BASE" --head "$DOCS_BRANCH" \
               --title "docs: refresh codebase metrics" \

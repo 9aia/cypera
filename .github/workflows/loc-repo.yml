@@ -28,7 +28,7 @@ on:
         description: Semver tag of 9aia/cypera to install tools/loc from
         required: false
         type: string
-        default: v0.2.0
+        default: v0.2.2
       tamias_ref:
         description: Semver tag of 9aia/tamias used by the setup-tamias action
         required: false

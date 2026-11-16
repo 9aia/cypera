@@ -43,7 +43,7 @@ on:
         description: Semver tag of 9aia/cypera to install tools/loc from
         required: false
         type: string
-        default: v0.2.0
+        default: v0.2.2
       tamias_ref:
         description: Semver tag of 9aia/tamias used by the setup-tamias action
         required: false
@@ -278,11 +278,12 @@ jobs:
             exit 0
           fi
           git commit -m "docs: refresh codebase metrics"
-          # The shallow clone never fetched $DOCS_BRANCH, so lease has no
-          # remote-tracking ref to compare ("stale info"). Fetch it first.
-          git fetch --quiet --depth 1 \
-            origin "+refs/heads/${DOCS_BRANCH}:refs/remotes/origin/${DOCS_BRANCH}" || true
-          git push --force-with-lease origin "$DOCS_BRANCH"
+          # --force-with-lease can't work here: the shallow single-branch
+          # clone's fetch refspec doesn't cover $DOCS_BRANCH, so git has
+          # no configured remote-tracking ref to lease against ("stale
+          # info" even right after fetching). The branch is bot-owned and
+          # regenerated wholesale — plain --force is correct.
+          git push --force origin "$DOCS_BRANCH"
           export GH_TOKEN="$BOT_TOKEN"
           if ! gh pr list --repo "$DOCS_REPO" --head "$DOCS_BRANCH" --state open --json number --jq '.[0].number' | grep -q .; then
             gh pr create --repo "$DOCS_REPO" --base "$PR_BASE" --head "$DOCS_BRANCH" \

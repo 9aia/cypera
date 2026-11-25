@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["render_config_doc_page","render_config_page","scan_config_structs","type_label"],"struct":["ConfigDocSection","ConfigDocStyle","ConfigField","ConfigStruct"]};

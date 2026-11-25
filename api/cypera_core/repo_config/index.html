@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="`cypera.toml` — the per-repo configuration that replaces the hardcoded knobs the per-repo `docs/gen-*.py` scripts carried (`PKG`/`BIN`/`PREFIX`/`OUT`, `SRCS`/`TITLES`/`SIMPLE`, `LAYER`/ `ORDER`/`SITE`, curated prose). Discovered upward from `--repo` (or the cwd); every section is optional."><title>cypera_core::repo_config - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-0c87338a.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cypera_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.1 (58cf8f9c3 2026-10-13) (Arch Linux rust 1:1.99.1-1)" data-channel="1.99.1" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Module repo_config</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../cypera_core/index.html">cypera_<wbr>core</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module repo_<wbr>config</a></h2><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#constants" title="Constants">Constants</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate cypera_<wbr>core</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">cypera_core</a></div><h1>Module <span>repo_<wbr>config</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/cypera_core/repo_config.rs.html#1-556">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p><code>cypera.toml</code> — the per-repo configuration that replaces the
+hardcoded knobs the per-repo <code>docs/gen-*.py</code> scripts carried
+(<code>PKG</code>/<code>BIN</code>/<code>PREFIX</code>/<code>OUT</code>, <code>SRCS</code>/<code>TITLES</code>/<code>SIMPLE</code>, <code>LAYER</code>/
+<code>ORDER</code>/<code>SITE</code>, curated prose). Discovered upward from <code>--repo</code>
+(or the cwd); every section is optional.</p>
+<div class="example-wrap"><pre class="language-toml"><code>[crate_map]
+order = [&quot;domain&quot;, &quot;port&quot;, &quot;adapter&quot;, &quot;ops&quot;, &quot;binary&quot;]
+default_layer = &quot;impl&quot;
+
+[crate_map.layers]
+&quot;myco-core&quot; = &quot;domain&quot;
+
+[[crate_map.splices]]
+target = &quot;explanation/architecture.md&quot;
+marker = &quot;&lt;!-- crate-map --&gt;&quot;
+
+[[crate_map.splices]]
+target = &quot;explanation/architecture.md&quot;
+first_table = true
+
+[crate_map.crate_api]
+site = &quot;myco&quot;
+out = &quot;reference/crate-api.md&quot;
+
+[cli]
+package = &quot;myco-driver&quot;     # cargo -p to build (omit → `bin` on PATH)
+bin = &quot;tamias-driver-myco&quot;   # binary under target/debug, or PATH name
+prefix = [&quot;run&quot;]             # argv prefix before the engine argv
+out = &quot;reference/cli.md&quot;     # optional emit target for `check`
+
+[config]
+title = &quot;Config — `myco.toml`&quot;
+types = { &quot;String&quot; = &quot;string&quot;, &quot;PathBuf&quot; = &quot;path&quot; }
+field_types = { &quot;aliases&quot; = &quot;{path: cuora://ref}&quot; }
+all_optional = [&quot;Config&quot;]
+out = &quot;reference/config.md&quot;
+
+[[config.structs]]
+file = &quot;crates/myco-core/src/lib.rs&quot;
+name = &quot;Config&quot;
+title = &quot;Top level&quot;
+
+[[config.sections]]
+level = 2
+title = &quot;Constraints&quot;
+text = &quot;&quot;&quot;
+- `deny_unknown_fields`: typos fail the load.
+&quot;&quot;&quot;
+
+[api]                        # gen api — rustdoc site (optional)
+out = &quot;docs/public/api&quot;      #   target/doc copy destination
+prefix = &quot;myco&quot;              #   index filter + title base
+target_dir = &quot;target/docs-api&quot;  # CARGO_TARGET_DIR when unset
+
+[check]                      # cypera check — profile + exemptions
+profile = &quot;engine&quot;           #   engine | library | content
+skip = [&quot;docs-site&quot;, &quot;docs-check-script&quot;]</code></pre></div>
+<p>Pure model + TOML decoding — the IO layer (discovery, file
+reads) lives in <code>cypera-cli</code>.</p>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.ApiConfig.html" title="struct cypera_core::repo_config::ApiConfig">ApiConfig</a></dt><dd><code>[api]</code> — <code>cypera gen api</code>: <code>cargo doc --workspace --no-deps</code>
+in the repo, <code>&lt;target&gt;/doc</code> copied into the docs site’s
+<code>public/api/</code>, plus the styled crate index. Absorbs the
+per-repo <code>docs/gen-api.py</code> + <code>docs/gen-api-index.py</code> pair (and
+the inline <code>docs:api</code> shell bupha/kuda/mimus carried). The
+output is a gitignored build artifact — no <code>check</code> freshness.</dd><dt><a class="struct" href="struct.CheckConfig.html" title="struct cypera_core::repo_config::CheckConfig">Check<wbr>Config</a></dt><dd><code>[check]</code> — exemptions for <code>cypera check</code>. Rules named in
+<code>skip</code> are still evaluated but reported <code>SKIP</code> (exempt) instead
+of their computed status — for repos where a contract rule
+doesn’t apply by design: content-only ledger mounts, theme
+packages without the docs-worktree convention, the website
+repo itself.</dd><dt><a class="struct" href="struct.CliConfig.html" title="struct cypera_core::repo_config::CliConfig">CliConfig</a></dt><dd><code>[cli]</code> — how to reach the CLI for the <code>--help</code> walk. Mirrors
+the <code>PKG</code>/<code>BIN</code>/<code>PREFIX</code> block every <code>gen-cli-docs.py</code> carried.</dd><dt><a class="struct" href="struct.ConfigDocConfig.html" title="struct cypera_core::repo_config::ConfigDocConfig">Config<wbr>DocConfig</a></dt><dd><code>[config]</code> — the config-reference page spec. Absorbs the
+<code>SRCS</code>/<code>TITLES</code>/<code>SIMPLE</code>/<code>FIELD_LABEL</code>/curated-prose blocks the
+<code>gen-config-docs.py</code> scripts hardcoded.</dd><dt><a class="struct" href="struct.ConfigSection.html" title="struct cypera_core::repo_config::ConfigSection">Config<wbr>Section</a></dt><dd>A <code>[[config.sections]]</code> entry — heading + struct table or
+curated prose, in page order. <code>title</code> omitted renders the body
+with no heading (the bupha preamble convention).</dd><dt><a class="struct" href="struct.ConfigStructRef.html" title="struct cypera_core::repo_config::ConfigStructRef">Config<wbr>Struct<wbr>Ref</a></dt><dd>A <code>[[config.structs]]</code> entry — one <code>pub struct</code> to document.</dd><dt><a class="struct" href="struct.CrateApiConfig.html" title="struct cypera_core::repo_config::CrateApiConfig">Crate<wbr>ApiConfig</a></dt><dd><code>[crate_map.crate_api]</code> — the rustdoc link list.</dd><dt><a class="struct" href="struct.CrateMapConfig.html" title="struct cypera_core::repo_config::CrateMapConfig">Crate<wbr>MapConfig</a></dt><dd><code>[crate_map]</code> — absorbs the per-repo <code>LAYER</code>/<code>ORDER</code>/<code>SITE</code>
+dicts and the <code>&lt;!-- crate-map --&gt;</code>/first-table splice targets
+the <code>gen-crate-map.py</code> wrappers hardcoded.</dd><dt><a class="struct" href="struct.CrateMapSplice.html" title="struct cypera_core::repo_config::CrateMapSplice">Crate<wbr>MapSplice</a></dt><dd>One <code>[[crate_map.splices]]</code> entry — replace a crate-map table
+inside an existing page. Exactly one of <code>marker</code>/<code>first_table</code>
+must be set (validated by <a href="struct.RepoConfig.html#method.validate" title="method cypera_core::repo_config::RepoConfig::validate"><code>RepoConfig::validate</code></a>).</dd><dt><a class="struct" href="struct.RepoConfig.html" title="struct cypera_core::repo_config::RepoConfig">Repo<wbr>Config</a></dt><dd>A decoded <code>cypera.toml</code>.</dd></dl><h2 id="constants" class="section-header">Constants<a href="#constants" class="anchor">§</a></h2><dl class="item-table"><dt><a class="constant" href="constant.CHECK_PROFILES.html" title="constant cypera_core::repo_config::CHECK_PROFILES">CHECK_<wbr>PROFILES</a></dt><dd>The docs-content profiles <code>[check] profile</code> accepts — the
+per-repo bar <code>cypera check</code>’s content rules enforce. <code>engine</code>
+is the full Diátaxis contract (tutorial + how-to + the
+explanation set + generated reference); <code>library</code> is the
+minimal bar (index + architecture + concepts); <code>content</code> is
+for narrative/site/ledger repos exempt from the quadrant
+requirements. Unknown values warn and fall back to <code>engine</code>.</dd><dt><a class="constant" href="constant.CHECK_RULE_NAMES.html" title="constant cypera_core::repo_config::CHECK_RULE_NAMES">CHECK_<wbr>RULE_<wbr>NAMES</a></dt><dd>The <code>cypera check</code> rule names — the vocabulary <code>[check] skip</code>
+accepts. Keep in sync with the rules constructed in
+<code>cypera-cli/src/check.rs</code>.</dd></dl></section></div></main></body></html>

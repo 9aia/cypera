@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_LAYER_ORDER"],"fn":["crate_api_page","crate_map_from_workspace","crate_map_table","guess_layer","guess_layer_as","purpose_from_entry_doc","render_crate_map","scan_entry_source","splice_first_table","splice_marked"],"struct":["CrateEntry","CrateMap","EntryScan"]};

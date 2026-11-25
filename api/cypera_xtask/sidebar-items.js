@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["host_triple","install","main","pack","run","run_out","target_dir"]};

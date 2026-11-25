@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["api","cli","config","crate_map","error","manifest","repo_config"]};
